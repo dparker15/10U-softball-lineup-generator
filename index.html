@@ -439,7 +439,7 @@
         <div class="card">
           <h2>Fielding Rotation</h2>
           <div class="no-print">
-            <p class="hint">Click any two cells to swap players. The Bench row shows who sits out each inning.</p>
+            <p class="hint" id="fieldingHint">Click any two cells to swap players.</p>
           </div>
           <div class="fielding-scroll">
             <table id="fieldingTable">
@@ -481,14 +481,16 @@
 <script>
 // ── Constants ──────────────────────────────────────────────────────────────
 
-// Each entry lists the named fielding positions for that roster size, plus a
-// trailing 'Bench' slot — one bench spot per inning regardless of count.
+// Each entry lists the named fielding positions for that roster size. A
+// trailing 'Bench' slot only exists for the 11-player roster — for 7-10
+// players the number of named positions always equals the player count, so
+// every position is filled each inning and no one sits out.
 const POSITIONS_BY_COUNT = {
   11: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Left Center Field','Right Center Field','Right Field','Bench'],
-  10: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Center Field','Right Field','Bench'],
-   9: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Right Field','Bench'],
-   8: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Outfield','Bench'],
-   7: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Bench']
+  10: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Left Center Field','Right Center Field','Right Field'],
+   9: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Center Field','Right Field'],
+   8: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Right Field'],
+   7: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Outfield']
 };
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -676,12 +678,13 @@ function pickPitcherBlocks() {
 
 function generateFieldingGrid(N, posNames) {
   const pitcherIdx = posNames.indexOf('Pitcher');
-  const benchIdx = posNames.length - 1; // 'Bench' is always last
+  const benchIdx = posNames.indexOf('Bench'); // -1 when there's no bench (10 or fewer players)
+  const hasBench = benchIdx !== -1;
   const allPlayers = Array.from({length: N}, (_, i) => i);
 
   for (let attempt = 0; attempt < 200; attempt++) {
-    // Bench schedule: 5 distinct players, one benched per inning.
-    const benchForInning = shuffle(allPlayers).slice(0, 5);
+    // Bench schedule: 5 distinct players, one benched per inning (11 players only).
+    const benchForInning = hasBench ? shuffle(allPlayers).slice(0, 5) : null;
 
     // Pitcher schedule: contiguous 1–2 inning blocks, distinct player per block,
     // never a player who is benched during that block.
@@ -693,7 +696,7 @@ function generateFieldingGrid(N, posNames) {
     for (const block of blocks) {
       const inningsInBlock = Array.from({length: block.len}, (_, k) => block.start + k);
       const candidates = shuffle(allPlayers).filter(p =>
-        !usedAsPitcher.has(p) && inningsInBlock.every(inn => benchForInning[inn] !== p)
+        !usedAsPitcher.has(p) && (!hasBench || inningsInBlock.every(inn => benchForInning[inn] !== p))
       );
       if (!candidates.length) { blocksOk = false; break; }
       const chosen = candidates[0];
@@ -711,9 +714,10 @@ function generateFieldingGrid(N, posNames) {
 
     for (let inn = 0; inn < 5; inn++) {
       const assignment = new Array(posNames.length).fill(-1);
-      assignment[benchIdx] = benchForInning[inn];
+      if (hasBench) assignment[benchIdx] = benchForInning[inn];
       assignment[pitcherIdx] = pitcherForInning[inn];
-      const remainingPlayers = shuffle(allPlayers.filter(p => p !== benchForInning[inn] && p !== pitcherForInning[inn]));
+      const excluded = hasBench ? [benchForInning[inn], pitcherForInning[inn]] : [pitcherForInning[inn]];
+      const remainingPlayers = shuffle(allPlayers.filter(p => !excluded.includes(p)));
       otherSlots.forEach((slot, idx) => { assignment[slot] = remainingPlayers[idx]; });
       grid.push(assignment);
     }
@@ -736,17 +740,20 @@ function validateRules() {
   if (!fieldingGrid.length || !N) return errors;
 
   const pitcherIdx = positions.indexOf('Pitcher');
-  const benchIdx = positions.length - 1;
+  const benchIdx = positions.indexOf('Bench'); // -1 when there's no bench (10 or fewer players)
 
-  // Rule 1: a player cannot be benched more than once per game.
-  const benchCount = new Array(N).fill(0);
-  for (let i = 0; i < 5; i++) {
-    const p = fieldingGrid[i][benchIdx];
-    if (p != null && p >= 0) benchCount[p]++;
-  }
-  for (let p = 0; p < N; p++) {
-    if (benchCount[p] > 1) {
-      errors.push(`Rule 1: ${players[p].name} is benched ${benchCount[p]} times — a player cannot sit the bench more than once per game.`);
+  // Rule 1: a player cannot be benched more than once per game. Only applies
+  // when a bench slot exists at all (11-player rosters).
+  if (benchIdx !== -1) {
+    const benchCount = new Array(N).fill(0);
+    for (let i = 0; i < 5; i++) {
+      const p = fieldingGrid[i][benchIdx];
+      if (p != null && p >= 0) benchCount[p]++;
+    }
+    for (let p = 0; p < N; p++) {
+      if (benchCount[p] > 1) {
+        errors.push(`Rule 1: ${players[p].name} is benched ${benchCount[p]} times — a player cannot sit the bench more than once per game.`);
+      }
     }
   }
 
@@ -882,6 +889,13 @@ function renderFieldingGrid() {
     <th>Position</th>
     ${[1,2,3,4,5].map(i => `<th style="text-align:center">Inning ${i}</th>`).join('')}
   </tr>`;
+
+  const hintEl = document.getElementById('fieldingHint');
+  if (hintEl) {
+    hintEl.textContent = positions.includes('Bench')
+      ? 'Click any two cells to swap players. The Bench row shows who sits out each inning.'
+      : 'Click any two cells to swap players. Every player fields a position each inning — no bench with 10 or fewer players.';
+  }
 
   body.innerHTML = '';
 
