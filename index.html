@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sandy Plains Softball Lineup Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #0d5ca9;
+      --primary-light: #1a74cc;
+      --secondary: #4aa8e8;
+      --accent: #f4a261;
+      --accent-dark: #e76f51;
+      --bg: #eef4fb;
+      --card: #ffffff;
+      --border: #c5d7ee;
+      --text: #1a2535;
+      --text-light: #5a718a;
+      --infield-bg: #dbeeff;
+      --selected-bg: #fef9c3;
+      --selected-border: #f59e0b;
+      --error-bg: #fee2e2;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 0.875rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    header .icon { font-size: 1.5rem; }
+    header h1 { font-family: 'Oswald', sans-serif; font-size: 1.4rem; letter-spacing: 0.3px; }
+    header .sub { font-size: 0.8rem; opacity: 0.65; margin-left: 0.5rem; }
+
+    main { max-width: 1300px; margin: 0 auto; padding: 1.5rem 1rem; }
+
+    .card {
+      background: var(--card);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+      margin-bottom: 1.25rem;
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 0;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+    label { font-size: 0.8rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.4px; }
+
+    input[type="text"], input[type="date"] {
+      padding: 0.45rem 0.7rem;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: var(--text);
+      background: white;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(82,183,136,0.18); }
+
+    .players-list { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }
+    .player-row { display: flex; align-items: center; gap: 0.5rem; }
+    .player-num { font-size: 0.8rem; font-weight: 700; color: var(--text-light); width: 22px; text-align: right; flex-shrink: 0; }
+    .player-row .name-inp { flex: 1; min-width: 0; }
+    .player-row .num-inp { width: 68px; flex-shrink: 0; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.45rem 1.1rem;
+      border: none;
+      border-radius: 7px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, opacity 0.15s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--primary-light); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary); }
+    .btn-accent { background: var(--accent); color: white; }
+    .btn-accent:hover:not(:disabled) { background: var(--accent-dark); }
+    .btn-outline { background: transparent; color: var(--primary-light); border: 1.5px solid var(--primary-light); }
+    .btn-outline:hover:not(:disabled) { background: var(--primary-light); color: white; }
+    .btn-ghost { background: transparent; color: #ef4444; border: none; padding: 0.25rem 0.4rem; font-size: 1rem; line-height: 1; }
+    .btn-ghost:hover { color: #dc2626; }
+    .btn-lg { padding: 0.65rem 1.75rem; font-size: 1rem; }
+
+    .btn-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+
+    .divider { height: 1px; background: var(--border); margin: 1rem 0; }
+
+    /* Results layout */
+    #results { display: none; }
+    .results-layout { display: grid; grid-template-columns: 260px 1fr; gap: 1.25rem; align-items: start; }
+    @media (max-width: 800px) { .results-layout { grid-template-columns: 1fr; } }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th {
+      background: var(--primary);
+      color: white;
+      padding: 0.45rem 0.7rem;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.78rem;
+      white-space: nowrap;
+      letter-spacing: 0.2px;
+    }
+    td { padding: 0.38rem 0.7rem; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #fafafa; }
+
+    td.pos-label { font-weight: 600; font-size: 0.8rem; color: var(--primary); }
+    td.clickable { cursor: pointer; user-select: none; }
+    td.clickable:hover { background: #d6eaf8 !important; }
+    td.selected { background: var(--selected-bg) !important; outline: 2px solid var(--selected-border); outline-offset: -2px; }
+    tr.batting-selected td { background: var(--selected-bg) !important; outline: none; }
+
+    .order-num { color: var(--text-light); font-weight: 700; font-size: 0.8rem; width: 30px; }
+
+    /* Fielding scroll */
+    .fielding-scroll { overflow-x: auto; }
+
+    /* Bench row styling */
+    td.bench-label { font-style: italic; color: var(--text-light); }
+    tr.bench-row td { background: #f4f6f9 !important; }
+
+    /* Hint text */
+    .hint { font-size: 0.78rem; color: var(--text-light); margin-bottom: 0.6rem; }
+
+    /* Error box */
+    .error-box {
+      background: var(--error-bg);
+      border: 1.5px solid #fca5a5;
+      border-radius: 8px;
+      padding: 0.875rem 1rem;
+      margin-bottom: 1rem;
+    }
+    .error-box h3 { color: #b91c1c; font-size: 0.875rem; margin-bottom: 0.4rem; }
+    .error-list { list-style: none; display: flex; flex-direction: column; gap: 0.25rem; }
+    .error-list li { font-size: 0.82rem; color: #dc2626; padding-left: 1rem; position: relative; }
+    .error-list li::before { content: '▸'; position: absolute; left: 0; }
+
+    /* Player count badge */
+    .count-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 6px;
+      background: var(--secondary);
+      color: white;
+      border-radius: 11px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1rem;
+    }
+    .tab-btn {
+      padding: 0.45rem 1rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-family: inherit;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      cursor: pointer;
+      color: var(--text-light);
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: var(--primary-light); }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Paste textarea */
+    .paste-area {
+      width: 100%;
+      min-height: 180px;
+      padding: 0.6rem 0.75rem;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-family: 'Inter', monospace, sans-serif;
+      color: var(--text);
+      background: white;
+      resize: vertical;
+      line-height: 1.6;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .paste-area:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(82,183,136,0.18); }
+    .paste-format-hint {
+      font-size: 0.75rem;
+      color: var(--text-light);
+      margin-top: 0.4rem;
+      line-height: 1.5;
+    }
+    .paste-format-hint code {
+      background: #f3f4f6;
+      padding: 0 4px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 0.75rem;
+    }
+
+    .paste-panel {
+      margin-top: 0.85rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--border);
+    }
+    .paste-panel h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.45rem;
+    }
+    .results-paste-area { min-height: 88px; }
+    .paste-msg {
+      font-size: 0.78rem;
+      color: #dc2626;
+      margin-top: 0.45rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+    .paste-msg.ok { color: #15803d; }
+
+    /* ── Print styles ── */
+    @media print {
+      @page { size: letter portrait; margin: 0.45in; }
+
+      body { background: white; }
+      header, .no-print { display: none !important; }
+      .paste-panel, .results-paste-area, .paste-msg { display: none !important; }
+      main { padding: 0; max-width: none; }
+
+      .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 0.4in;
+      }
+      .print-header h2 { font-size: 15pt; font-weight: 700; color: #000; }
+      .print-header p { font-size: 10pt; color: #444; margin-top: 2pt; }
+
+      .card { box-shadow: none; padding: 0; border-radius: 0; margin-bottom: 0; }
+      .card h2 { font-size: 9pt; margin-bottom: 4pt; padding-bottom: 3pt; }
+
+      .results-layout {
+        display: grid;
+        grid-template-columns: 1.6in 1fr;
+        gap: 0.2in;
+        align-items: start;
+      }
+
+      table { font-size: 7.5pt; }
+      th { padding: 3pt 5pt; font-size: 7pt; }
+      td { padding: 2.5pt 5pt; }
+
+      .hint, #errorBox { display: none !important; }
+      td.clickable { cursor: default; }
+      th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+      #results { display: block !important; }
+    }
+
+    .print-header { display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="icon">⚾</div>
+  <h1>Sandy Plains Softball Lineup Generator</h1>
+</header>
+
+<main>
+
+  <!-- ── Input Section ── -->
+  <div id="inputSection">
+
+    <div class="card no-print">
+      <h2>Game Info</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="gameDate">Game Date</label>
+          <input type="date" id="gameDate">
+        </div>
+        <div class="form-group">
+          <label for="teamName">Home Team</label>
+          <input type="text" id="teamName" placeholder="e.g., Fire Ants">
+        </div>
+        <div class="form-group">
+          <label for="opponentName">Away Team</label>
+          <input type="text" id="opponentName" placeholder="e.g., Blue Jays">
+        </div>
+        <div class="form-group">
+          <label for="fieldName">Field</label>
+          <input type="text" id="fieldName" placeholder="e.g., Sandy Plains Field 3">
+        </div>
+      </div>
+    </div>
+
+    <div class="card no-print">
+      <h2>
+        Players
+        <span class="count-badge" id="playerCountBadge">0</span>
+        <span style="font-size:0.75rem;font-weight:400;color:var(--text-light);margin-left:4px">(7–11)</span>
+      </h2>
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tabBtnPaste" onclick="switchTab('paste')">Paste Roster</button>
+        <button class="tab-btn" id="tabBtnOne" onclick="switchTab('one')">One by One</button>
+      </div>
+
+      <!-- Tab: individual rows -->
+      <div class="tab-panel" id="tabPanelOne">
+        <div style="display:grid;grid-template-columns:1fr 80px 32px;gap:0.5rem;margin-bottom:0.4rem;padding:0 0 0 28px">
+          <span style="font-size:0.75rem;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px">Name</span>
+          <span style="font-size:0.75rem;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px">Jersey #</span>
+          <span></span>
+        </div>
+        <div class="players-list" id="playersList"></div>
+        <div class="btn-row" style="margin-top:0.75rem">
+          <button class="btn btn-outline" style="font-size:0.82rem;padding:0.35rem 0.85rem" onclick="addPlayerRow()">+ Add Player</button>
+        </div>
+      </div>
+
+      <!-- Tab: paste roster -->
+      <div class="tab-panel active" id="tabPanelPaste">
+        <textarea class="paste-area" id="pasteArea" placeholder="Paste your roster here, one player per line…"></textarea>
+        <p class="paste-format-hint">
+          Each line = one player. Jersey number is optional. Accepted formats:<br>
+          <code>Jane Smith, 12</code> &nbsp;·&nbsp; <code>Jane Smith 12</code> &nbsp;·&nbsp; <code>Jane Smith #12</code> &nbsp;·&nbsp; <code>12 Jane Smith</code>
+        </p>
+        <div class="btn-row" style="margin-top:0.75rem">
+          <button class="btn btn-primary" style="font-size:0.82rem" onclick="importFromPaste()">Import Players</button>
+          <button class="btn btn-ghost" style="color:var(--text-light);border:1.5px solid var(--border);border-radius:7px;padding:0.3rem 0.75rem;font-size:0.82rem" onclick="clearPaste()">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row no-print">
+      <button class="btn btn-accent btn-lg" onclick="generateLineup()">Generate Lineup</button>
+      <button class="btn btn-outline" onclick="resetPage()">Reset</button>
+    </div>
+
+  </div>
+
+  <!-- ── Results Section ── -->
+  <div id="results">
+
+    <!-- Print-only header -->
+    <div class="print-header">
+      <h2 id="printTitle"></h2>
+      <p id="printDate"></p>
+      <p id="printField" style="font-size:9pt;color:#666;margin-top:2pt"></p>
+    </div>
+
+    <!-- Errors -->
+    <div id="errorBox" class="error-box" style="display:none">
+      <h3>⚠ Rule Violations — Fix before printing</h3>
+      <ul class="error-list" id="errorList"></ul>
+    </div>
+
+    <div class="results-layout">
+
+      <!-- Batting Lineup -->
+      <div>
+        <div class="card">
+          <h2>Batting Lineup</h2>
+          <p class="hint no-print">Click any two rows to swap players</p>
+          <table id="battingTable">
+            <thead>
+              <tr>
+                <th style="width:32px">#</th>
+                <th>Player</th>
+                <th style="width:52px">Jersey</th>
+              </tr>
+            </thead>
+            <tbody id="battingBody"></tbody>
+          </table>
+          <div class="paste-panel no-print">
+            <h3>Manual lineup</h3>
+            <textarea class="paste-area results-paste-area" id="batPasteArea" placeholder="One row per batter. Names should match your entered roster; use jersey if two players share a name."></textarea>
+            <p class="paste-format-hint">&nbsp;</p>
+            <div class="btn-row" style="margin-top:0.5rem">
+              <button type="button" class="btn btn-primary" style="font-size:0.82rem" onclick="applyBattingPaste()">Apply changes</button>
+              <button type="button" class="btn btn-outline" style="font-size:0.82rem" onclick="clearBattingPaste()">Clear</button>
+            </div>
+            <div class="paste-msg" id="batPasteMsg" role="status"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fielding Grid -->
+      <div>
+        <div class="card">
+          <h2>Fielding Rotation</h2>
+          <div class="no-print">
+            <p class="hint">Click any two cells to swap players. The Bench row shows who sits out each inning.</p>
+          </div>
+          <div class="fielding-scroll">
+            <table id="fieldingTable">
+              <thead id="fieldingHead"></thead>
+              <tbody id="fieldingBody"></tbody>
+            </table>
+          </div>
+          <div class="paste-panel no-print">
+            <h3>Manual fielding grid</h3>
+            <textarea class="paste-area results-paste-area" id="fieldPasteArea" placeholder="5 innings, one row per position. Player names must match your entered roster. Paste from spreadsheet or use comma/tab separated lists."></textarea>
+            <p class="paste-format-hint">&nbsp;</p>
+            <div class="btn-row" style="margin-top:0.5rem">
+              <button type="button" class="btn btn-primary" style="font-size:0.82rem" onclick="applyFieldingPaste()">Apply changes</button>
+              <button type="button" class="btn btn-outline" style="font-size:0.82rem" onclick="clearFieldingPaste()">Clear</button>
+            </div>
+            <div class="paste-msg" id="fieldPasteMsg" role="status"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="btn-row no-print" style="margin-top:0.5rem">
+      <button class="btn btn-primary" onclick="doRegenerate()">↺ Regenerate</button>
+      <!-- REVERT: change onclick back to doPrint() and remove the two CDN script tags above <script> -->
+      <button class="btn btn-outline" id="printBtn" onclick="doPrintPDF()">🖨 Print / Save PDF</button>
+      <button class="btn btn-outline" onclick="goBack()">← Back to Input</button>
+      <button class="btn btn-outline" onclick="resetPage()">Reset</button>
+    </div>
+
+  </div>
+
+</main>
+
+<!-- jsPDF + AutoTable for PDF export. To revert to browser print, remove these two lines and see doPrint() note in JS. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+
+// Each entry lists the named fielding positions for that roster size, plus a
+// trailing 'Bench' slot — one bench spot per inning regardless of count.
+const POSITIONS_BY_COUNT = {
+  11: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Left Center Field','Right Center Field','Right Field','Bench'],
+  10: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Center Field','Right Field','Bench'],
+   9: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Right Field','Bench'],
+   8: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Outfield','Bench'],
+   7: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Bench']
+};
+
+// ── State ──────────────────────────────────────────────────────────────────
+
+let players      = [];   // [{name, number}]
+let battingOrder = [];   // array of player indices (batting position order)
+let fieldingGrid = [];   // [inning 0..4][positionIndex] = playerIndex
+let positions    = [];   // position name strings for current player count
+let selectedCell = null; // {type:'batting', row} | {type:'fielding', inning, pos}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+window.addEventListener('load', () => {
+  for (let i = 0; i < 11; i++) addPlayerRow();
+  updateCountBadge();
+});
+
+// ── Player Row Management ──────────────────────────────────────────────────
+
+function addPlayerRow() {
+  const list = document.getElementById('playersList');
+  if (list.querySelectorAll('.player-row').length >= 11) return;
+
+  const row = document.createElement('div');
+  row.className = 'player-row';
+  row.innerHTML = `
+    <span class="player-num">0</span>
+    <input type="text" class="name-inp" placeholder="Player name" oninput="updateCountBadge()">
+    <input type="text" class="num-inp" placeholder="#" maxlength="3">
+    <button class="btn btn-ghost" onclick="removePlayerRow(this)" title="Remove player">×</button>
+  `;
+  list.appendChild(row);
+  renumberRows();
+  updateCountBadge();
+}
+
+function removePlayerRow(btn) {
+  const list = document.getElementById('playersList');
+  if (list.querySelectorAll('.player-row').length <= 1) return;
+  btn.closest('.player-row').remove();
+  renumberRows();
+  updateCountBadge();
+}
+
+function renumberRows() {
+  document.querySelectorAll('#playersList .player-row').forEach((row, i) => {
+    row.querySelector('.player-num').textContent = i + 1;
+  });
+}
+
+function updateCountBadge() {
+  const count = countFilledPlayers();
+  const badge = document.getElementById('playerCountBadge');
+  badge.textContent = count;
+  badge.style.background = (count >= 7 && count <= 11) ? '#1a74cc' : '#ef4444';
+}
+
+function countFilledPlayers() {
+  let n = 0;
+  document.querySelectorAll('#playersList .player-row').forEach(row => {
+    if (row.querySelector('.name-inp').value.trim()) n++;
+  });
+  return n;
+}
+
+function getPlayersFromForm() {
+  const result = [];
+  document.querySelectorAll('#playersList .player-row').forEach(row => {
+    const name = row.querySelector('.name-inp').value.trim();
+    const jersey = row.querySelector('.num-inp').value.trim();
+    if (name) result.push({ name, number: jersey || '?' });
+  });
+  return result;
+}
+
+// ── Tab Switching ──────────────────────────────────────────────────────────
+
+function switchTab(tab) {
+  document.getElementById('tabBtnOne').classList.toggle('active', tab === 'one');
+  document.getElementById('tabBtnPaste').classList.toggle('active', tab === 'paste');
+  document.getElementById('tabPanelOne').classList.toggle('active', tab === 'one');
+  document.getElementById('tabPanelPaste').classList.toggle('active', tab === 'paste');
+}
+
+// ── Paste Import ───────────────────────────────────────────────────────────
+
+function parsePasteLine(line) {
+  line = line.trim();
+  if (!line) return null;
+
+  // "Name, #Number" or "Name, Number"
+  let m = line.match(/^(.+?),\s*#?(\w+)\s*$/);
+  if (m) return { name: m[1].trim(), number: m[2] };
+
+  // "#Number Name" or "Number Name" (number first)
+  m = line.match(/^#?(\d+)\s+(.+)$/);
+  if (m) return { name: m[2].trim(), number: m[1] };
+
+  // "Name #Number" or "Name Number" (number last, preceded by space)
+  m = line.match(/^(.+?)\s+#?(\d+)\s*$/);
+  if (m) return { name: m[1].trim(), number: m[2] };
+
+  // Just a name, no number
+  return { name: line, number: '?' };
+}
+
+function importFromPaste() {
+  const raw = document.getElementById('pasteArea').value;
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+
+  if (!lines.length) {
+    alert('Nothing to import — paste your roster first.');
+    return;
+  }
+
+  const parsed = lines.map(parsePasteLine).filter(Boolean).slice(0, 11);
+
+  if (parsed.length < 1) {
+    alert('Could not find any player names. Check your formatting and try again.');
+    return;
+  }
+
+  // Clear and repopulate the individual rows
+  const list = document.getElementById('playersList');
+  list.innerHTML = '';
+  // Ensure we have the right number of empty rows first (addPlayerRow enforces cap)
+  parsed.forEach(p => {
+    // Directly create rows since addPlayerRow checks max
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.innerHTML = `
+      <span class="player-num">0</span>
+      <input type="text" class="name-inp" placeholder="Player name" oninput="updateCountBadge()" value="${escHtml(p.name)}">
+      <input type="text" class="num-inp" placeholder="#" maxlength="3" value="${escHtml(p.number === '?' ? '' : p.number)}">
+      <button class="btn btn-ghost" onclick="removePlayerRow(this)" title="Remove player">×</button>
+    `;
+    list.appendChild(row);
+  });
+  renumberRows();
+  updateCountBadge();
+
+  // Switch to the "One by One" tab so the coach can review/edit
+  switchTab('one');
+}
+
+function clearPaste() {
+  document.getElementById('pasteArea').value = '';
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ── Fielding Grid Generation ────────────────────────────────────────────────
+//
+// grid[inning][slotIdx] = playerIdx, where slotIdx runs over `positions`
+// (the named fielding positions for this roster size, plus a trailing
+// 'Bench' slot). Each inning is a full permutation of all N players across
+// the N slots (one named position or bench each). Rules enforced:
+//   1. A player cannot sit the bench more than once per game.
+//   2. A player can pitch at most 2 innings, and if 2, they must be
+//      consecutive.
+//   3. Every position is filled every inning (guaranteed by construction —
+//      each inning is a bijection between players and slots).
+
+function pickPitcherBlocks() {
+  // Partition the 5 innings into contiguous blocks of length 1 or 2.
+  const blocks = [];
+  let i = 0;
+  while (i < 5) {
+    const remaining = 5 - i;
+    const len = remaining === 1 ? 1 : (Math.random() < 0.5 ? 1 : 2);
+    blocks.push({ start: i, len });
+    i += len;
+  }
+  return blocks;
+}
+
+function generateFieldingGrid(N, posNames) {
+  const pitcherIdx = posNames.indexOf('Pitcher');
+  const benchIdx = posNames.length - 1; // 'Bench' is always last
+  const allPlayers = Array.from({length: N}, (_, i) => i);
+
+  for (let attempt = 0; attempt < 200; attempt++) {
+    // Bench schedule: 5 distinct players, one benched per inning.
+    const benchForInning = shuffle(allPlayers).slice(0, 5);
+
+    // Pitcher schedule: contiguous 1–2 inning blocks, distinct player per block,
+    // never a player who is benched during that block.
+    const blocks = pickPitcherBlocks();
+    const pitcherForInning = new Array(5).fill(-1);
+    const usedAsPitcher = new Set();
+    let blocksOk = true;
+
+    for (const block of blocks) {
+      const inningsInBlock = Array.from({length: block.len}, (_, k) => block.start + k);
+      const candidates = shuffle(allPlayers).filter(p =>
+        !usedAsPitcher.has(p) && inningsInBlock.every(inn => benchForInning[inn] !== p)
+      );
+      if (!candidates.length) { blocksOk = false; break; }
+      const chosen = candidates[0];
+      usedAsPitcher.add(chosen);
+      inningsInBlock.forEach(inn => { pitcherForInning[inn] = chosen; });
+    }
+
+    if (!blocksOk) continue;
+
+    // Fill remaining slots per inning with a random permutation of the
+    // remaining players (no cross-inning constraint on non-bench/pitcher slots).
+    const grid = [];
+    const otherSlots = [];
+    for (let j = 0; j < posNames.length; j++) if (j !== benchIdx && j !== pitcherIdx) otherSlots.push(j);
+
+    for (let inn = 0; inn < 5; inn++) {
+      const assignment = new Array(posNames.length).fill(-1);
+      assignment[benchIdx] = benchForInning[inn];
+      assignment[pitcherIdx] = pitcherForInning[inn];
+      const remainingPlayers = shuffle(allPlayers.filter(p => p !== benchForInning[inn] && p !== pitcherForInning[inn]));
+      otherSlots.forEach((slot, idx) => { assignment[slot] = remainingPlayers[idx]; });
+      grid.push(assignment);
+    }
+    return grid;
+  }
+
+  // Fallback: cyclic shift (valid permutation each inning; rules may not be optimal).
+  const grid = [];
+  for (let i = 0; i < 5; i++) {
+    grid.push(allPlayers.map((_, j) => (j + i) % N));
+  }
+  return grid;
+}
+
+// ── Validation ─────────────────────────────────────────────────────────────
+
+function validateRules() {
+  const N = players.length;
+  const errors = [];
+  if (!fieldingGrid.length || !N) return errors;
+
+  const pitcherIdx = positions.indexOf('Pitcher');
+  const benchIdx = positions.length - 1;
+
+  // Rule 1: a player cannot be benched more than once per game.
+  const benchCount = new Array(N).fill(0);
+  for (let i = 0; i < 5; i++) {
+    const p = fieldingGrid[i][benchIdx];
+    if (p != null && p >= 0) benchCount[p]++;
+  }
+  for (let p = 0; p < N; p++) {
+    if (benchCount[p] > 1) {
+      errors.push(`Rule 1: ${players[p].name} is benched ${benchCount[p]} times — a player cannot sit the bench more than once per game.`);
+    }
+  }
+
+  // Rule 2: a player can pitch at most 2 innings, and those 2 must be consecutive.
+  for (let p = 0; p < N; p++) {
+    const innings = [];
+    for (let i = 0; i < 5; i++) if (fieldingGrid[i][pitcherIdx] === p) innings.push(i);
+    if (innings.length > 2) {
+      errors.push(`Rule 2: ${players[p].name} pitches ${innings.length} innings — maximum is 2.`);
+    } else if (innings.length === 2 && innings[1] - innings[0] !== 1) {
+      errors.push(`Rule 2: ${players[p].name} pitches Innings ${innings[0] + 1} and ${innings[1] + 1} — the 2 innings must be consecutive.`);
+    }
+  }
+
+  // Rule 3: every position must be filled every inning by a distinct player.
+  for (let i = 0; i < 5; i++) {
+    const seen = new Set();
+    for (let j = 0; j < positions.length; j++) {
+      const p = fieldingGrid[i][j];
+      if (p == null || p < 0) {
+        errors.push(`Rule 3: Inning ${i + 1} is missing a player for ${positions[j]}.`);
+        continue;
+      }
+      if (seen.has(p)) {
+        errors.push(`Rule 3: ${players[p].name} fills more than one spot in Inning ${i + 1}.`);
+      }
+      seen.add(p);
+    }
+    if (seen.size !== N) {
+      errors.push(`Rule 3: Inning ${i + 1} does not use every available player.`);
+    }
+  }
+
+  return errors;
+}
+
+// ── Generate ────────────────────────────────────────────────────────────────
+
+function generateLineup() {
+  const raw = getPlayersFromForm();
+  if (raw.length < 7 || raw.length > 11) {
+    alert(`Please enter between 7 and 11 players.\nCurrently you have ${raw.length} player${raw.length === 1 ? '' : 's'} with names filled in.`);
+    return;
+  }
+
+  players = raw;
+  const N = players.length;
+  positions = POSITIONS_BY_COUNT[N];
+
+  battingOrder = shuffle(Array.from({length: N}, (_, i) => i));
+  fieldingGrid = generateFieldingGrid(N, positions);
+
+  selectedCell = null;
+  document.getElementById('inputSection').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+  renderResults();
+}
+
+function doRegenerate() {
+  const N = players.length;
+  battingOrder = shuffle(Array.from({length: N}, (_, i) => i));
+  fieldingGrid = generateFieldingGrid(N, positions);
+  selectedCell = null;
+  renderResults();
+}
+
+function goBack() {
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('inputSection').style.display = 'block';
+}
+
+function resetPage() {
+  if (!confirm('Reset and start over?')) return;
+  players = []; battingOrder = []; fieldingGrid = []; positions = []; selectedCell = null;
+  document.getElementById('gameDate').value = '';
+  document.getElementById('teamName').value = '';
+  document.getElementById('opponentName').value = '';
+  document.getElementById('fieldName').value = '';
+  document.getElementById('playersList').innerHTML = '';
+  clearBattingPaste();
+  clearFieldingPaste();
+  for (let i = 0; i < 11; i++) addPlayerRow();
+  updateCountBadge();
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('inputSection').style.display = 'block';
+}
+
+// ── Render ──────────────────────────────────────────────────────────────────
+
+function renderResults() {
+  const dateVal = document.getElementById('gameDate').value;
+  const team = document.getElementById('teamName').value.trim() || 'Home Team';
+  const opp  = document.getElementById('opponentName').value.trim() || 'Away Team';
+
+  const fieldName = document.getElementById('fieldName').value.trim();
+  document.getElementById('printTitle').textContent = `${opp}  at  ${team}`;
+  if (dateVal) {
+    const d = new Date(dateVal + 'T12:00:00');
+    document.getElementById('printDate').textContent = d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  } else {
+    document.getElementById('printDate').textContent = '';
+  }
+  document.getElementById('printField').textContent = fieldName;
+
+  renderBattingTable();
+  renderFieldingGrid();
+  showErrors();
+}
+
+function renderBattingTable() {
+  const tbody = document.getElementById('battingBody');
+  tbody.innerHTML = '';
+  battingOrder.forEach((pIdx, orderPos) => {
+    const p = players[pIdx];
+    const tr = document.createElement('tr');
+    tr.dataset.orderPos = orderPos;
+    const cols = `
+      <td class="order-num clickable" onclick="handleBattingClick(${orderPos})">${orderPos + 1}</td>
+      <td class="clickable" onclick="handleBattingClick(${orderPos})">${escHtml(p.name)}</td>
+      <td class="clickable" style="color:var(--text-light)" onclick="handleBattingClick(${orderPos})">${escHtml(p.number)}</td>
+    `;
+    tr.innerHTML = cols;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderFieldingGrid() {
+  const N = players.length;
+  const head = document.getElementById('fieldingHead');
+  const body = document.getElementById('fieldingBody');
+
+  head.innerHTML = `<tr>
+    <th>Position</th>
+    ${[1,2,3,4,5].map(i => `<th style="text-align:center">Inning ${i}</th>`).join('')}
+  </tr>`;
+
+  body.innerHTML = '';
+
+  positions.forEach((pos, posIdx) => {
+    const isBench = pos === 'Bench';
+    const tr = document.createElement('tr');
+    if (isBench) tr.className = 'bench-row';
+    let html = `<td class="pos-label ${isBench ? 'bench-label' : ''}">${escHtml(pos)}</td>`;
+    for (let inn = 0; inn < 5; inn++) {
+      const pIdx = fieldingGrid[inn][posIdx];
+      const name = players[pIdx].name;
+      html += `<td class="clickable"
+                   style="text-align:center"
+                   onclick="handleFieldingClick(${inn},${posIdx})"
+                   data-inn="${inn}" data-pos="${posIdx}">${escHtml(name)}</td>`;
+    }
+    tr.innerHTML = html;
+    body.appendChild(tr);
+  });
+}
+
+function showErrors() {
+  const errs = validateRules();
+  const box  = document.getElementById('errorBox');
+  const list = document.getElementById('errorList');
+  const btn  = document.getElementById('printBtn');
+
+  if (errs.length) {
+    box.style.display = 'block';
+    list.innerHTML = errs.map(e => `<li>${escHtml(e)}</li>`).join('');
+    btn.disabled = true;
+    btn.title = 'Fix rule violations before printing';
+  } else {
+    box.style.display = 'none';
+    btn.disabled = false;
+    btn.title = '';
+  }
+}
+
+// ── Swap Interactions ────────────────────────────────────────────────────────
+
+function handleBattingClick(orderPos) {
+  if (!selectedCell) {
+    selectedCell = { type: 'batting', row: orderPos };
+    setBattingHighlight(orderPos, true);
+  } else if (selectedCell.type === 'batting') {
+    if (selectedCell.row === orderPos) {
+      setBattingHighlight(orderPos, false);
+      selectedCell = null;
+    } else {
+      const a = selectedCell.row, b = orderPos;
+      [battingOrder[a], battingOrder[b]] = [battingOrder[b], battingOrder[a]];
+      selectedCell = null;
+      renderBattingTable();
+    }
+  } else {
+    clearHighlights();
+    selectedCell = { type: 'batting', row: orderPos };
+    setBattingHighlight(orderPos, true);
+  }
+}
+
+function setBattingHighlight(orderPos, on) {
+  const rows = document.querySelectorAll('#battingBody tr');
+  if (rows[orderPos]) {
+    rows[orderPos].querySelectorAll('td').forEach(td => td.classList.toggle('selected', on));
+  }
+}
+
+function handleFieldingClick(inn, pos) {
+  if (!selectedCell) {
+    selectedCell = { type: 'fielding', inn, pos };
+    setFieldingHighlight(inn, pos, true);
+  } else if (selectedCell.type === 'fielding') {
+    if (selectedCell.inn === inn && selectedCell.pos === pos) {
+      setFieldingHighlight(inn, pos, false);
+      selectedCell = null;
+    } else {
+      const { inn: i1, pos: p1 } = selectedCell;
+      [fieldingGrid[i1][p1], fieldingGrid[inn][pos]] = [fieldingGrid[inn][pos], fieldingGrid[i1][p1]];
+      selectedCell = null;
+      renderResults();
+    }
+  } else {
+    clearHighlights();
+    selectedCell = { type: 'fielding', inn, pos };
+    setFieldingHighlight(inn, pos, true);
+  }
+}
+
+function setFieldingHighlight(inn, pos, on) {
+  const cell = document.querySelector(`#fieldingBody td[data-inn="${inn}"][data-pos="${pos}"]`);
+  if (cell) cell.classList.toggle('selected', on);
+}
+
+function clearHighlights() {
+  document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+}
+
+// ── Paste from spreadsheet (batting + fielding) ───────────────────────────────
+
+function normName(s) {
+  return String(s).trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function splitLineToCells(line) {
+  if (line.includes('\t')) return line.split('\t').map(c => c.trim());
+  if (line.includes(',')) return line.split(',').map(c => c.trim());
+  return [line.trim()];
+}
+
+function isJerseyToken(s) {
+  const t = String(s).trim();
+  return /^#?\d{1,3}$/.test(t) || t === '?' || t === '';
+}
+
+function looksLikeBattingHeader(cells) {
+  const t = cells.map(c => String(c).toLowerCase()).join('|');
+  if (cells.length > 4) return false;
+  return /player|name|jersey|bat|^#?$/.test(t);
+}
+
+function looksLikeFieldHeader(cells) {
+  const t = cells.map(c => String(c).toLowerCase()).join(' ');
+  if (/^position\b/.test(cells[0] ? String(cells[0]).toLowerCase() : '')) return true;
+  return /\bposition\b/.test(t) && /\binning\b/.test(t);
+}
+
+function parseBattingPasteRow(cells) {
+  const parts = cells.map(c => String(c).trim()).filter(c => c !== '');
+  if (!parts.length) return null;
+  if (parts.length === 1) return { name: parts[0], jersey: null };
+  if (parts.length === 2) {
+    const [a, b] = parts;
+    if (/^\d+$/.test(a) && !isJerseyToken(b)) return { name: b, jersey: null };
+    if (isJerseyToken(b) && b !== '') return { name: a, jersey: b.replace(/^#/, '') };
+    return { name: `${a} ${b}`, jersey: null };
+  }
+  const [a, b, c] = parts;
+  if (/^\d+$/.test(a)) {
+    const jersey = c && isJerseyToken(c) && c !== '' ? c.replace(/^#/, '') : null;
+    return { name: b, jersey };
+  }
+  const jersey = isJerseyToken(b) && b !== '' ? b.replace(/^#/, '') : null;
+  return { name: a, jersey };
+}
+
+function findPlayerIndex(nameRaw, jerseyOpt) {
+  const name = normName(nameRaw);
+  if (!name) return -1;
+  const candidates = [];
+  for (let i = 0; i < players.length; i++) {
+    if (normName(players[i].name) === name) candidates.push(i);
+  }
+  if (!candidates.length) return -1;
+  if (candidates.length === 1) return candidates[0];
+  if (jerseyOpt != null && String(jerseyOpt).trim() !== '') {
+    const j = String(jerseyOpt).trim();
+    for (const idx of candidates) {
+      const pj = String(players[idx].number).trim();
+      if (pj === j || (pj === '?' && j === '?')) return idx;
+    }
+  }
+  return -2;
+}
+
+function setPasteMsg(elId, text, ok) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = text || '';
+  el.classList.toggle('ok', !!ok);
+}
+
+function applyBattingPaste() {
+  setPasteMsg('batPasteMsg', '', false);
+  const raw = document.getElementById('batPasteArea').value;
+  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (!lines.length) {
+    setPasteMsg('batPasteMsg', 'Paste a batting order first.');
+    return;
+  }
+
+  let rows = lines.map(splitLineToCells);
+  if (rows.length && looksLikeBattingHeader(rows[0])) rows = rows.slice(1);
+
+  const N = players.length;
+  const order = [];
+  const errs = [];
+  const used = new Set();
+
+  rows.forEach((cells, i) => {
+    const pr = parseBattingPasteRow(cells);
+    if (!pr || !pr.name) {
+      errs.push(`Line ${i + 1}: could not read a player name.`);
+      return;
+    }
+    const idx = findPlayerIndex(pr.name, pr.jersey);
+    if (idx === -1) errs.push(`Line ${i + 1}: no match for "${pr.name}".`);
+    else if (idx === -2) errs.push(`Line ${i + 1}: multiple "${pr.name}" — add a Jersey column.`);
+    else {
+      if (used.has(idx)) errs.push(`Line ${i + 1}: ${players[idx].name} appears more than once in the paste.`);
+      used.add(idx);
+      order.push(idx);
+    }
+  });
+
+  if (errs.length) {
+    setPasteMsg('batPasteMsg', errs.join('\n'));
+    return;
+  }
+  if (order.length !== N) {
+    setPasteMsg('batPasteMsg', `Need exactly ${N} players (your roster size); pasted ${order.length}.`);
+    return;
+  }
+
+  battingOrder = order;
+  selectedCell = null;
+  renderBattingTable();
+  showErrors();
+  document.getElementById('batPasteArea').value = '';
+  setPasteMsg('batPasteMsg', 'Batting order updated.', true);
+}
+
+function clearBattingPaste() {
+  document.getElementById('batPasteArea').value = '';
+  setPasteMsg('batPasteMsg', '', false);
+}
+
+function applyFieldingPaste() {
+  setPasteMsg('fieldPasteMsg', '', false);
+  const raw = document.getElementById('fieldPasteArea').value;
+  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (!lines.length) {
+    setPasteMsg('fieldPasteMsg', 'Paste fielding data first.');
+    return;
+  }
+
+  let rows = lines.map(splitLineToCells);
+  if (rows.length && looksLikeFieldHeader(rows[0])) rows = rows.slice(1);
+
+  const N = players.length;
+  if (rows.length !== N) {
+    setPasteMsg('fieldPasteMsg', `Expected ${N} rows (one per fielding position), got ${rows.length}.`);
+    return;
+  }
+
+  const c0 = rows[0].length;
+  const colMode = c0 >= 6 ? 6 : 5;
+  if (colMode !== 5 && colMode !== 6) {
+    setPasteMsg('fieldPasteMsg', 'Each row needs 5 inning columns, or 6 columns with Position + 5 innings.');
+    return;
+  }
+  for (let r = 0; r < rows.length; r++) {
+    const L = rows[r].length;
+    if (colMode === 6 && L < 6) {
+      setPasteMsg('fieldPasteMsg', `Row ${r + 1}: expected Position + 5 innings (${L} columns found).`);
+      return;
+    }
+    if (colMode === 5 && L !== 5) {
+      setPasteMsg('fieldPasteMsg', `Row ${r + 1}: expected 5 inning columns (${L} columns found).`);
+      return;
+    }
+  }
+
+  const newGrid = [];
+  for (let inn = 0; inn < 5; inn++) newGrid.push(Array(N).fill(-1));
+
+  const seenPos = new Set();
+  const errs = [];
+
+  rows.forEach((cells, r) => {
+    let posIdx = r;
+    let nameCols;
+    if (colMode === 6) {
+      const posLabel = cells[0].trim();
+      const pi = positions.findIndex(p => normName(p) === normName(posLabel));
+      if (pi < 0) {
+        errs.push(`Row ${r + 1} (${posLabel}): unknown position label.`);
+        return;
+      }
+      if (seenPos.has(pi)) {
+        errs.push(`Duplicate row for "${positions[pi]}".`);
+        return;
+      }
+      seenPos.add(pi);
+      posIdx = pi;
+      nameCols = cells.slice(1, 6);
+    } else {
+      nameCols = cells.slice(0, 5);
+    }
+
+    for (let inn = 0; inn < 5; inn++) {
+      const rawName = (nameCols[inn] || '').trim();
+      if (!rawName) {
+        errs.push(`Row ${r + 1} Inning ${inn + 1}: empty cell.`);
+        continue;
+      }
+      const idx = findPlayerIndex(rawName, null);
+      if (idx === -1) errs.push(`Row ${r + 1} Inning ${inn + 1}: unknown player "${rawName}".`);
+      else if (idx === -2) errs.push(`Row ${r + 1} Inning ${inn + 1}: ambiguous "${rawName}" — use full name as in roster.`);
+      else newGrid[inn][posIdx] = idx;
+    }
+  });
+
+  if (colMode === 6 && seenPos.size !== N) {
+    setPasteMsg('fieldPasteMsg', 'Each position must appear exactly once in the first column.');
+    return;
+  }
+
+  if (errs.length) {
+    const show = errs.slice(0, 12);
+    setPasteMsg('fieldPasteMsg', show.join('\n') + (errs.length > 12 ? `\n… and ${errs.length - 12} more.` : ''));
+    return;
+  }
+
+  for (let inn = 0; inn < 5; inn++) {
+    const seen = new Set();
+    for (let j = 0; j < N; j++) {
+      const p = newGrid[inn][j];
+      if (p < 0) {
+        setPasteMsg('fieldPasteMsg', `Inning ${inn + 1}: incomplete paste (missing assignment).`);
+        return;
+      }
+      if (seen.has(p)) {
+        setPasteMsg('fieldPasteMsg', `Inning ${inn + 1}: ${players[p].name} appears more than once in paste.`);
+        return;
+      }
+      seen.add(p);
+    }
+    if (seen.size !== N) {
+      setPasteMsg('fieldPasteMsg', `Inning ${inn + 1}: not every player is assigned exactly once.`);
+      return;
+    }
+  }
+
+  fieldingGrid = newGrid;
+  selectedCell = null;
+  renderResults();
+  document.getElementById('fieldPasteArea').value = '';
+  const v = validateRules();
+  setPasteMsg(
+    'fieldPasteMsg',
+    v.length ? `Grid applied; fix ${v.length} rule issue(s) above before printing.` : 'Fielding grid updated.',
+    !v.length
+  );
+}
+
+function clearFieldingPaste() {
+  document.getElementById('fieldPasteArea').value = '';
+  setPasteMsg('fieldPasteMsg', '', false);
+}
+
+// ── Print ────────────────────────────────────────────────────────────────────
+// Browser print fallback — kept intact for easy revert.
+// To revert: change button onclick back to doPrint(), remove the two CDN <script> tags.
+
+function doPrint() {
+  const errs = validateRules();
+  if (errs.length) { alert('Cannot print — there are rule violations. Please fix them first.'); return; }
+  window.print();
+}
+
+// ── PDF Export (jsPDF + autoTable) ───────────────────────────────────────────
+
+function doPrintPDF() {
+  const errs = validateRules();
+  if (errs.length) { alert('Cannot export PDF — there are rule violations. Please fix them first.'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
+
+  const PAGE_W  = 612;
+  const MARGIN  = 36;
+  const USABLE  = PAGE_W - MARGIN * 2;   // 540pt
+  const PRIMARY = [13, 92, 169];
+  const MUTED   = [90, 113, 138];
+  const TEXT    = [26, 37, 53];
+
+  // ── Header ──────────────────────────────────────────────────────────────
+  const team      = document.getElementById('teamName').value.trim()     || 'Home Team';
+  const opp       = document.getElementById('opponentName').value.trim() || 'Away Team';
+  const fieldName = document.getElementById('fieldName').value.trim();
+  const dateVal   = document.getElementById('gameDate').value;
+  let dateStr = '';
+  if (dateVal) {
+    const d = new Date(dateVal + 'T12:00:00');
+    dateStr = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  let y = MARGIN + 12;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(...PRIMARY);
+  doc.text(`${opp}  at  ${team}`, PAGE_W / 2, y, { align: 'center' });
+  y += 16;
+
+  if (dateStr) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...MUTED);
+    doc.text(dateStr, PAGE_W / 2, y, { align: 'center' });
+    y += 13;
+  }
+
+  if (fieldName) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...MUTED);
+    doc.text(fieldName, PAGE_W / 2, y, { align: 'center' });
+    y += 13;
+  }
+
+  y += 4;
+  doc.setDrawColor(...PRIMARY);
+  doc.setLineWidth(0.75);
+  doc.line(MARGIN, y, PAGE_W - MARGIN, y);
+  y += 10;
+
+  const TABLE_Y = y;
+
+  const cellStyle = { fontSize: 8, cellPadding: { top: 3, bottom: 3, left: 4, right: 4 }, overflow: 'ellipsize', textColor: TEXT };
+  const headStyle = { fillColor: PRIMARY, textColor: 255, fontStyle: 'bold', fontSize: 7.5, halign: 'center' };
+  const altStyle  = { fillColor: [250, 250, 250] };
+
+  // ── Fielding Grid (full width) ───────────────────────────────────────────
+  const POS_COL_W  = 85;
+  const INN_COL_W  = Math.floor((USABLE - POS_COL_W) / 5);  // ~91pt each
+
+  const fieldBody = positions.map((pos, posIdx) => {
+    const label = pos;
+    const row = [label];
+    for (let inn = 0; inn < 5; inn++) row.push(players[fieldingGrid[inn][posIdx]].name);
+    return row;
+  });
+
+  doc.autoTable({
+    head: [['Position', 'Inning 1', 'Inning 2', 'Inning 3', 'Inning 4', 'Inning 5']],
+    body: fieldBody,
+    startY: TABLE_Y,
+    margin: { left: MARGIN },
+    tableWidth: USABLE,
+    styles: cellStyle,
+    headStyles: headStyle,
+    alternateRowStyles: altStyle,
+    columnStyles: {
+      0: { cellWidth: POS_COL_W, fontStyle: 'bold', textColor: PRIMARY },
+      1: { cellWidth: INN_COL_W, halign: 'center' },
+      2: { cellWidth: INN_COL_W, halign: 'center' },
+      3: { cellWidth: INN_COL_W, halign: 'center' },
+      4: { cellWidth: INN_COL_W, halign: 'center' },
+      5: { cellWidth: INN_COL_W, halign: 'center' }
+    }
+  });
+  const fieldFinalY = doc.lastAutoTable.finalY;
+
+  // ── Batting Lineup (centered, below fielding) ────────────────────────────
+  const BAT_W   = 260;
+  const BAT_X   = Math.round((PAGE_W - BAT_W) / 2);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...PRIMARY);
+  doc.text('Batting Lineup', PAGE_W / 2, fieldFinalY + 18, { align: 'center' });
+
+  const BAT_Y   = fieldFinalY + 24;
+  const batBody = battingOrder.map((pIdx, i) => [
+    String(i + 1),
+    players[pIdx].name,
+    players[pIdx].number || '—'
+  ]);
+
+  doc.autoTable({
+    head: [['#', 'Player', 'Jersey']],
+    body: batBody,
+    startY: BAT_Y,
+    margin: { left: BAT_X },
+    tableWidth: BAT_W,
+    styles: cellStyle,
+    headStyles: headStyle,
+    alternateRowStyles: altStyle,
+    columnStyles: {
+      0: { cellWidth: 25, halign: 'center', fontStyle: 'bold', textColor: MUTED },
+      1: { cellWidth: 190 },
+      2: { cellWidth: 45, halign: 'center', textColor: MUTED }
+    }
+  });
+  const batFinalY = doc.lastAutoTable.finalY;
+
+  // ── Open in new tab ───────────────────────────────────────────────────────
+  // To revert to direct download instead, replace the two lines below with:
+  //   const safe = s => s.replace(/[^a-z0-9]/gi,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
+  //   doc.save(`${safe(team)}_vs_${safe(opp)}_lineup.pdf`);
+  const blob = doc.output('blob');
+  window.open(URL.createObjectURL(blob), '_blank');
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
