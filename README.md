@@ -93,8 +93,6 @@ open index.html
 
 Or double-click the file in your file explorer.
 
-`index-old.html` is kept as a snapshot of the previous version, for reference only — it is not maintained.
-
 ---
 
 ## Technical Notes
