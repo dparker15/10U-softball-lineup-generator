@@ -411,7 +411,7 @@
           </div>
           <div class="paste-panel no-print">
             <h3>Manual fielding grid</h3>
-            <textarea class="paste-area results-paste-area" id="fieldPasteArea" placeholder="5 innings, one row per position. Player names must match your entered roster. Paste from spreadsheet or use comma/tab separated lists."></textarea>
+            <textarea class="paste-area results-paste-area" id="fieldPasteArea" placeholder="3 innings, one row per position. Player names must match your entered roster. Paste from spreadsheet or use comma/tab separated lists."></textarea>
             <p class="paste-format-hint">&nbsp;</p>
             <div class="btn-row" style="margin-top:0.5rem">
               <button type="button" class="btn btn-primary" style="font-size:0.82rem" onclick="applyFieldingPaste()">Apply changes</button>
@@ -442,6 +442,11 @@
 
 <script>
 // ── Constants ──────────────────────────────────────────────────────────────
+
+// The lineup/fielding structure covers the first 3 innings — most games at
+// this level don't reliably go further, and the coach can adjust fielding
+// on the fly for any innings beyond this if the physical game runs longer.
+const NUM_INNINGS = 3;
 
 // Each entry lists the named fielding positions for that roster size. Bench
 // slots only exist for 11- and 12-player rosters (one and two, respectively)
@@ -617,7 +622,7 @@ function shuffle(arr) {
 //      honoring rank order (no bench preference — that's randomized).
 //   3. (same as 1, restated in SKILL.md as "use every available player")
 //   4. A player cannot sit any Bench slot more than once, in aggregate, per game.
-//   5. A player can pitch at most 2 innings, and if 2, they must be consecutive.
+//   5. A player can pitch at most 2 of the 3 innings (not required to be consecutive).
 
 function prefRank(playerIdx, token) {
   const prefs = players[playerIdx].prefs || [];
@@ -625,17 +630,27 @@ function prefRank(playerIdx, token) {
   return idx === -1 ? Infinity : idx;
 }
 
-function pickPitcherBlocks() {
-  // Partition the 5 innings into contiguous blocks of length 1 or 2.
-  const blocks = [];
-  let i = 0;
-  while (i < 5) {
-    const remaining = 5 - i;
-    const len = remaining === 1 ? 1 : (Math.random() < 0.5 ? 1 : 2);
-    blocks.push({ start: i, len });
-    i += len;
+// Picks a pitcher for every inning. No player may pitch more than 2 of the
+// NUM_INNINGS innings (they need not be consecutive). Returns null if no
+// valid assignment could be found (caller should retry).
+function pickPitcherForInnings(N, benchForInning, hasBench) {
+  const allPlayers = Array.from({length: N}, (_, i) => i);
+  const pitcherForInning = new Array(NUM_INNINGS).fill(-1);
+  const pitchCount = new Array(N).fill(0);
+
+  for (let inn = 0; inn < NUM_INNINGS; inn++) {
+    const benched = hasBench ? benchForInning[inn] : [];
+    const candidates = shuffle(allPlayers).filter(p =>
+      pitchCount[p] < 2 && !benched.includes(p)
+    );
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => prefRank(a, 'P') - prefRank(b, 'P'));
+    const chosen = candidates[0];
+    pitcherForInning[inn] = chosen;
+    pitchCount[chosen]++;
   }
-  return blocks;
+
+  return pitcherForInning;
 }
 
 // Greedily assigns remaining players to remaining (non-pitcher, non-bench)
@@ -677,37 +692,21 @@ function generateFieldingGrid(N, posNames) {
   const allPlayers = Array.from({length: N}, (_, i) => i);
 
   for (let attempt = 0; attempt < 200; attempt++) {
-    // Bench schedule: 5 * numBenchSlots distinct players, spread one-per-slot-per-inning,
-    // no player benched more than once across the whole game.
+    // Bench schedule: NUM_INNINGS * numBenchSlots distinct players, spread
+    // one-per-slot-per-inning, no player benched more than once across the game.
     let benchForInning = null;
     if (hasBench) {
-      const totalBenchSpots = 5 * numBenchSlots;
+      const totalBenchSpots = NUM_INNINGS * numBenchSlots;
       if (totalBenchSpots > N) continue; // not enough distinct players — retry (shouldn't happen for 11/12)
       const pool = shuffle(allPlayers).slice(0, totalBenchSpots);
-      benchForInning = Array.from({length: 5}, (_, inn) => pool.slice(inn * numBenchSlots, (inn + 1) * numBenchSlots));
+      benchForInning = Array.from({length: NUM_INNINGS}, (_, inn) => pool.slice(inn * numBenchSlots, (inn + 1) * numBenchSlots));
     }
 
-    // Pitcher schedule: contiguous 1–2 inning blocks, distinct player per block,
-    // never a player who is benched during that block. Prefer players who
-    // ranked Pitcher highly in their position preferences.
-    const blocks = pickPitcherBlocks();
-    const pitcherForInning = new Array(5).fill(-1);
-    const usedAsPitcher = new Set();
-    let blocksOk = true;
-
-    for (const block of blocks) {
-      const inningsInBlock = Array.from({length: block.len}, (_, k) => block.start + k);
-      const candidates = shuffle(allPlayers).filter(p =>
-        !usedAsPitcher.has(p) && (!hasBench || inningsInBlock.every(inn => !benchForInning[inn].includes(p)))
-      );
-      if (!candidates.length) { blocksOk = false; break; }
-      candidates.sort((a, b) => prefRank(a, 'P') - prefRank(b, 'P'));
-      const chosen = candidates[0];
-      usedAsPitcher.add(chosen);
-      inningsInBlock.forEach(inn => { pitcherForInning[inn] = chosen; });
-    }
-
-    if (!blocksOk) continue;
+    // Pitcher schedule: at most 2 of the NUM_INNINGS innings per player (not
+    // required to be consecutive). Prefers players who ranked Pitcher highly
+    // in their position preferences.
+    const pitcherForInning = pickPitcherForInnings(N, benchForInning, hasBench);
+    if (!pitcherForInning) continue;
 
     // Fill remaining slots per inning, preferring each player's ranked
     // position preferences where an open slot matches.
@@ -715,7 +714,7 @@ function generateFieldingGrid(N, posNames) {
     const otherSlots = [];
     for (let j = 0; j < posNames.length; j++) if (!benchIndices.includes(j) && j !== pitcherIdx) otherSlots.push(j);
 
-    for (let inn = 0; inn < 5; inn++) {
+    for (let inn = 0; inn < NUM_INNINGS; inn++) {
       const assignment = new Array(posNames.length).fill(-1);
       const benchedThisInning = hasBench ? benchForInning[inn] : [];
       benchIndices.forEach((slot, i) => { assignment[slot] = benchedThisInning[i]; });
@@ -733,7 +732,7 @@ function generateFieldingGrid(N, posNames) {
 
   // Fallback: cyclic shift (valid permutation each inning; rules may not be optimal).
   const grid = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < NUM_INNINGS; i++) {
     grid.push(allPlayers.map((_, j) => (j + i) % N));
   }
   return grid;
@@ -751,7 +750,7 @@ function validateRules() {
   positions.forEach((p, i) => { if (p.startsWith('Bench')) benchIndices.push(i); }); // empty when there's no bench (10 or fewer players)
 
   // Rule 1 (SKILL.md Rule 3): every position must be filled every inning by a distinct player.
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < NUM_INNINGS; i++) {
     const seen = new Set();
     for (let j = 0; j < positions.length; j++) {
       const p = fieldingGrid[i][j];
@@ -772,7 +771,7 @@ function validateRules() {
   // Rule 3: a player cannot sit any Bench slot more than once, in aggregate, per game.
   if (benchIndices.length) {
     const benchCount = new Array(N).fill(0);
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < NUM_INNINGS; i++) {
       benchIndices.forEach(benchIdx => {
         const p = fieldingGrid[i][benchIdx];
         if (p != null && p >= 0) benchCount[p]++;
@@ -785,14 +784,12 @@ function validateRules() {
     }
   }
 
-  // Rule 4: a player can pitch at most 2 innings, and those 2 must be consecutive.
+  // Rule 4: a player can pitch at most 2 of the 3 innings.
   for (let p = 0; p < N; p++) {
-    const innings = [];
-    for (let i = 0; i < 5; i++) if (fieldingGrid[i][pitcherIdx] === p) innings.push(i);
-    if (innings.length > 2) {
-      errors.push(`Rule 4: ${players[p].name} pitches ${innings.length} innings — maximum is 2.`);
-    } else if (innings.length === 2 && innings[1] - innings[0] !== 1) {
-      errors.push(`Rule 4: ${players[p].name} pitches Innings ${innings[0] + 1} and ${innings[1] + 1} — the 2 innings must be consecutive.`);
+    let count = 0;
+    for (let i = 0; i < NUM_INNINGS; i++) if (fieldingGrid[i][pitcherIdx] === p) count++;
+    if (count > 2) {
+      errors.push(`Rule 4: ${players[p].name} pitches ${count} innings — maximum is 2.`);
     }
   }
 
@@ -905,7 +902,7 @@ function renderFieldingGrid() {
 
   head.innerHTML = `<tr>
     <th>Position</th>
-    ${[1,2,3,4,5].map(i => `<th style="text-align:center">Inning ${i}</th>`).join('')}
+    ${Array.from({length: NUM_INNINGS}, (_, i) => i + 1).map(i => `<th style="text-align:center">Inning ${i}</th>`).join('')}
   </tr>`;
 
   const hasBenchRows = positions.some(p => p.startsWith('Bench'));
@@ -923,7 +920,7 @@ function renderFieldingGrid() {
     const tr = document.createElement('tr');
     if (isBench) tr.className = 'bench-row';
     let html = `<td class="pos-label ${isBench ? 'bench-label' : ''}">${escHtml(pos)}</td>`;
-    for (let inn = 0; inn < 5; inn++) {
+    for (let inn = 0; inn < NUM_INNINGS; inn++) {
       const pIdx = fieldingGrid[inn][posIdx];
       const name = players[pIdx].name;
       html += `<td class="clickable"
@@ -1162,25 +1159,25 @@ function applyFieldingPaste() {
   }
 
   const c0 = rows[0].length;
-  const colMode = c0 >= 6 ? 6 : 5;
-  if (colMode !== 5 && colMode !== 6) {
-    setPasteMsg('fieldPasteMsg', 'Each row needs 5 inning columns, or 6 columns with Position + 5 innings.');
+  const colMode = c0 >= NUM_INNINGS + 1 ? NUM_INNINGS + 1 : NUM_INNINGS;
+  if (colMode !== NUM_INNINGS && colMode !== NUM_INNINGS + 1) {
+    setPasteMsg('fieldPasteMsg', `Each row needs ${NUM_INNINGS} inning columns, or ${NUM_INNINGS + 1} columns with Position + ${NUM_INNINGS} innings.`);
     return;
   }
   for (let r = 0; r < rows.length; r++) {
     const L = rows[r].length;
-    if (colMode === 6 && L < 6) {
-      setPasteMsg('fieldPasteMsg', `Row ${r + 1}: expected Position + 5 innings (${L} columns found).`);
+    if (colMode === NUM_INNINGS + 1 && L < NUM_INNINGS + 1) {
+      setPasteMsg('fieldPasteMsg', `Row ${r + 1}: expected Position + ${NUM_INNINGS} innings (${L} columns found).`);
       return;
     }
-    if (colMode === 5 && L !== 5) {
-      setPasteMsg('fieldPasteMsg', `Row ${r + 1}: expected 5 inning columns (${L} columns found).`);
+    if (colMode === NUM_INNINGS && L !== NUM_INNINGS) {
+      setPasteMsg('fieldPasteMsg', `Row ${r + 1}: expected ${NUM_INNINGS} inning columns (${L} columns found).`);
       return;
     }
   }
 
   const newGrid = [];
-  for (let inn = 0; inn < 5; inn++) newGrid.push(Array(N).fill(-1));
+  for (let inn = 0; inn < NUM_INNINGS; inn++) newGrid.push(Array(N).fill(-1));
 
   const seenPos = new Set();
   const errs = [];
@@ -1188,7 +1185,7 @@ function applyFieldingPaste() {
   rows.forEach((cells, r) => {
     let posIdx = r;
     let nameCols;
-    if (colMode === 6) {
+    if (colMode === NUM_INNINGS + 1) {
       const posLabel = cells[0].trim();
       const pi = positions.findIndex(p => normName(p) === normName(posLabel));
       if (pi < 0) {
@@ -1201,12 +1198,12 @@ function applyFieldingPaste() {
       }
       seenPos.add(pi);
       posIdx = pi;
-      nameCols = cells.slice(1, 6);
+      nameCols = cells.slice(1, NUM_INNINGS + 1);
     } else {
-      nameCols = cells.slice(0, 5);
+      nameCols = cells.slice(0, NUM_INNINGS);
     }
 
-    for (let inn = 0; inn < 5; inn++) {
+    for (let inn = 0; inn < NUM_INNINGS; inn++) {
       const rawName = (nameCols[inn] || '').trim();
       if (!rawName) {
         errs.push(`Row ${r + 1} Inning ${inn + 1}: empty cell.`);
@@ -1230,7 +1227,7 @@ function applyFieldingPaste() {
     return;
   }
 
-  for (let inn = 0; inn < 5; inn++) {
+  for (let inn = 0; inn < NUM_INNINGS; inn++) {
     const seen = new Set();
     for (let j = 0; j < N; j++) {
       const p = newGrid[inn][j];
@@ -1341,17 +1338,20 @@ function doPrintPDF() {
 
   // ── Fielding Grid (full width) ───────────────────────────────────────────
   const POS_COL_W  = 85;
-  const INN_COL_W  = Math.floor((USABLE - POS_COL_W) / 5);  // ~91pt each
+  const INN_COL_W  = Math.floor((USABLE - POS_COL_W) / NUM_INNINGS);
 
   const fieldBody = positions.map((pos, posIdx) => {
     const label = pos;
     const row = [label];
-    for (let inn = 0; inn < 5; inn++) row.push(players[fieldingGrid[inn][posIdx]].name);
+    for (let inn = 0; inn < NUM_INNINGS; inn++) row.push(players[fieldingGrid[inn][posIdx]].name);
     return row;
   });
 
+  const inningColumnStyles = {};
+  for (let i = 1; i <= NUM_INNINGS; i++) inningColumnStyles[i] = { cellWidth: INN_COL_W, halign: 'center' };
+
   doc.autoTable({
-    head: [['Position', 'Inning 1', 'Inning 2', 'Inning 3', 'Inning 4', 'Inning 5']],
+    head: [['Position', ...Array.from({length: NUM_INNINGS}, (_, i) => `Inning ${i + 1}`)]],
     body: fieldBody,
     startY: TABLE_Y,
     margin: { left: MARGIN },
@@ -1361,11 +1361,7 @@ function doPrintPDF() {
     alternateRowStyles: altStyle,
     columnStyles: {
       0: { cellWidth: POS_COL_W, fontStyle: 'bold', textColor: PRIMARY },
-      1: { cellWidth: INN_COL_W, halign: 'center' },
-      2: { cellWidth: INN_COL_W, halign: 'center' },
-      3: { cellWidth: INN_COL_W, halign: 'center' },
-      4: { cellWidth: INN_COL_W, halign: 'center' },
-      5: { cellWidth: INN_COL_W, halign: 'center' }
+      ...inningColumnStyles
     }
   });
   const fieldFinalY = doc.lastAutoTable.finalY;

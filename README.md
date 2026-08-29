@@ -1,6 +1,6 @@
 # Sandy Plains Softball Lineup Generator
 
-A single-file web app for youth softball coaches to instantly generate a batting lineup and 5-inning fielding rotation for their team.
+A single-file web app for youth softball coaches to instantly generate a batting lineup and 3-inning fielding rotation for their team. The physical game may run longer, but most games at this level don't reliably go past the 3rd inning, so the generator covers just the first 3 innings — the coach can adjust fielding manually on the fly for anything beyond that.
 
 ## Features
 
@@ -45,7 +45,7 @@ Use **+ Add Player** to add rows (7–12 players supported; the page starts with
 ### 3. Generate the Lineup
 Click **Generate Lineup** to randomly produce:
 - A **batting order** (all players, no duplicates)
-- A **fielding rotation** across 5 innings that enforces all rules below, giving priority to each player's ranked position preferences
+- A **fielding rotation** across 3 innings that enforces all rules below, giving priority to each player's ranked position preferences
 
 ### 4. Adjust if Needed
 Click any two rows in the batting lineup to swap them. Click any two cells in the fielding grid to swap those players. Rule violations are flagged in real time.
@@ -64,7 +64,7 @@ The generator enforces the following rules automatically. Manual swaps are valid
 | 1 | Every position must be filled every inning by a distinct player |
 | 2 | Players are placed in their preferred positions where possible, honoring rank order (no player has a bench preference — that's randomized) |
 | 3 | A player cannot sit any Bench slot more than once, in aggregate, per game |
-| 4 | A player can pitch at most 2 innings, and if 2, they must be consecutive |
+| 4 | A player can pitch at most 2 of the 3 innings (not required to be consecutive) |
 
 11-player rosters include one **Bench** row; 12-player rosters include two (**Bench 1** and **Bench 2**). With 10 or fewer players, the number of named positions always equals the roster size, so every player fields a position every inning and there is no bench.
 
@@ -101,4 +101,4 @@ Or double-click the file in your file explorer.
 - **Fonts** loaded from Google Fonts (requires internet connection)
 - **PDF generation** uses [jsPDF](https://github.com/parallax/jsPDF) and [jsPDF-AutoTable](https://github.com/simonbengtsson/jsPDF-AutoTable) loaded from CDN (requires internet connection)
 - **Roster storage** uses the browser's `localStorage` under the key `sandyPlainsSavedRoster` — it's local to that browser and device, not synced anywhere
-- The fielding grid is generated per inning: bench slot(s) are scheduled first (5 × number-of-bench-slots distinct players across the game, each benched at most once), then the pitcher is scheduled in contiguous 1–2 inning blocks (preferring players who ranked Pitcher highly), then the remaining slots are filled by greedily matching each remaining player's ranked position preferences to an open slot, with any leftovers assigned at random. A cyclic-shift fallback guarantees a valid grid even if no preference-satisfying assignment is found within the attempt limit.
+- The fielding grid is generated per inning: bench slot(s) are scheduled first (3 × number-of-bench-slots distinct players across the game, each benched at most once), then the pitcher is scheduled inning-by-inning — capping any one player at 2 of the 3 innings (not required to be consecutive) and preferring players who ranked Pitcher highly — then the remaining slots are filled by greedily matching each remaining player's ranked position preferences to an open slot, with any leftovers assigned at random. A cyclic-shift fallback guarantees a valid grid even if no preference-satisfying assignment is found within the attempt limit.
