@@ -10,7 +10,8 @@ A single-file web app for youth softball coaches to instantly generate a batting
 - **Persistent Game Info** — date, team names, and field stay visible and editable on both the input and results screens, so a typo doesn't force a regenerate
 - **Click-to-swap** any two players in either the batting lineup or the fielding grid
 - **Rule validation** with inline error messages — printing is blocked until all violations are resolved
-- **PDF export** opens in a new browser tab for printing or saving, with no browser headers or footers
+- **PDF export** opens in a new browser tab for printing or saving, with no browser headers or footers — prints two identical copies (2-up) on one letter sheet, each with the batting lineup and fielding grid side by side
+- **Last updated date and What's New** in the page footer, showing when the site last changed and what's different
 - **Responsive design** — works on desktop, tablet, and mobile
 - No installation, no backend, no dependencies to install — just open the HTML file
 
@@ -22,7 +23,7 @@ A single-file web app for youth softball coaches to instantly generate a batting
 Fill in the game date, home team name, away team name, and the field name (e.g., *Sandy Plains Field 3*). This card stays visible after you generate a lineup, so you can fix any of these fields at any time without needing to regenerate.
 
 ### 2. Add Your Roster
-Enter each player's name, jersey number, and (optionally) their ranked position preferences using shorthand, highest preference first:
+Enter each player's name, jersey number, and (optionally) their ranked position preferences using shorthand, highest preference first. Tap or hover the **(i)** next to the Position Prefs heading for a shorthand reminder:
 
 ```
 C, 1B, OF
@@ -53,6 +54,8 @@ Click any two rows in the batting lineup to swap them. Click any two cells in th
 ### 5. Print or Save
 Click **Print / Save PDF** to open a clean PDF in a new browser tab. From there, use the browser's native PDF viewer to print or download.
 
+The PDF is a single 8.5" × 11" sheet with two identical copies, one on the top half and one on the bottom half, separated by a dashed cut line. Each copy shows the matchup, date, and field at the top, with the batting lineup on the left and the fielding grid on the right.
+
 ---
 
 ## Fielding Rules
@@ -74,31 +77,11 @@ The generator enforces the following rules automatically. Manual swaps are valid
 
 | Players | Positions |
 |---------|-----------|
-| 12 | Catcher, Pitcher, 1st Base, 2nd Base, 3rd Base, Short Stop, Left Field, Left Center Field, Right Center Field, Right Field, Bench 1, Bench 2 |
-| 11 | Catcher, Pitcher, 1st Base, 2nd Base, 3rd Base, Short Stop, Left Field, Left Center Field, Right Center Field, Right Field, Bench |
-| 10 | Catcher, Pitcher, 1st Base, 2nd Base, 3rd Base, Short Stop, Left Field, Left Center Field, Right Center Field, Right Field |
-| 9 | Catcher, Pitcher, 1st Base, 2nd Base, 3rd Base, Short Stop, Left Field, Center Field, Right Field |
-| 8 | Catcher, Pitcher, 1st Base, 2nd Base, 3rd Base, Short Stop, Left Field, Right Field |
-| 7 | Catcher, Pitcher, 1st Base, 2nd Base, 3rd Base, Short Stop, Outfield |
+| 12 | Catcher, Pitcher, 1st Base, 2nd Base, Short Stop, 3rd Base, Left Field, Left Center Field, Right Center Field, Right Field, Bench 1, Bench 2 |
+| 11 | Catcher, Pitcher, 1st Base, 2nd Base, Short Stop, 3rd Base, Left Field, Left Center Field, Right Center Field, Right Field, Bench |
+| 10 | Catcher, Pitcher, 1st Base, 2nd Base, Short Stop, 3rd Base, Left Field, Left Center Field, Right Center Field, Right Field |
+| 9 | Catcher, Pitcher, 1st Base, 2nd Base, Short Stop, 3rd Base, Left Field, Center Field, Right Field |
+| 8 | Catcher, Pitcher, 1st Base, 2nd Base, Short Stop, 3rd Base, Left Field, Right Field |
+| 7 | Catcher, Pitcher, 1st Base, 2nd Base, Short Stop, 3rd Base, Outfield |
 
 ---
-
-## Running Locally
-
-No build step or server required. Just open the file in any modern browser:
-
-```
-open index.html
-```
-
-Or double-click the file in your file explorer.
-
----
-
-## Technical Notes
-
-- **Single file** — all HTML, CSS, and JavaScript is self-contained in `index.html`, including the header icon (embedded as a base64 PNG)
-- **Fonts** loaded from Google Fonts (requires internet connection)
-- **PDF generation** uses [jsPDF](https://github.com/parallax/jsPDF) and [jsPDF-AutoTable](https://github.com/simonbengtsson/jsPDF-AutoTable) loaded from CDN (requires internet connection)
-- **Roster storage** uses the browser's `localStorage` under the key `sandyPlainsSavedRoster` — it's local to that browser and device, not synced anywhere
-- The fielding grid is generated per inning: bench slot(s) are scheduled first (3 × number-of-bench-slots distinct players across the game, each benched at most once), then the pitcher is scheduled inning-by-inning — capping any one player at 2 of the 3 innings (not required to be consecutive) and preferring players who ranked Pitcher highly — then the remaining slots are filled by greedily matching each remaining player's ranked position preferences to an open slot, with any leftovers assigned at random. A cyclic-shift fallback guarantees a valid grid even if no preference-satisfying assignment is found within the attempt limit.
