@@ -20,7 +20,7 @@ A single-file web app for youth softball coaches to instantly generate a batting
 ## How to Use
 
 ### 1. Enter Game Info
-Fill in the game date, home team name, away team name, and the field name (e.g., *Sandy Plains Field 3*). This card stays visible after you generate a lineup, so you can fix any of these fields at any time without needing to regenerate.
+Fill in the game date, home team name, away team name, and the field. Pick the field from the dropdown (Sandy Plains Fields 1–4, Shaw Park Fields 2–4) or type in any other field name. This card stays visible after you generate a lineup, so you can fix any of these fields at any time without needing to regenerate.
 
 ### 2. Add Your Roster
 Enter each player's name, jersey number, and (optionally) their ranked position preferences using shorthand, highest preference first. Tap or hover the **(i)** next to the Position Prefs heading for a shorthand reminder:
