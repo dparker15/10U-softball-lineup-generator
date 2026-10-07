@@ -97,6 +97,25 @@
       gap: 0.5rem;
     }
     .player-head { margin-bottom: 0.4rem; }
+
+    /* Field combobox: page-built dropdown that also accepts typed values */
+    .combo { position: relative; display: flex; }
+    .combo input { flex: 1; min-width: 0; padding-right: 2rem; }
+    .combo-toggle {
+      position: absolute; right: 2px; top: 2px; bottom: 2px; width: 1.8rem;
+      background: none; border: none; cursor: pointer;
+      color: var(--text-light); font-size: 0.9rem; font-family: inherit;
+    }
+    .combo-toggle:hover { color: var(--primary); }
+    .combo-list {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30;
+      max-height: 240px; overflow-y: auto;
+      list-style: none; padding: 0.25rem 0;
+      background: var(--card); border: 1.5px solid var(--border); border-radius: 6px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    }
+    .combo-list li { padding: 0.45rem 0.7rem; font-size: 0.9rem; cursor: pointer; }
+    .combo-list li.active, .combo-list li:hover { background: var(--infield-bg); color: var(--primary); }
     .player-head > span {
       font-size: 0.75rem; font-weight: 600; color: var(--text-light);
       text-transform: uppercase; letter-spacing: .4px; text-align: center;
@@ -381,7 +400,13 @@
       </div>
       <div class="form-group">
         <label for="fieldName">Field</label>
-        <input type="text" id="fieldName" placeholder="e.g., Sandy Plains Field 3" oninput="updateGameInfoDisplay()">
+        <!-- Dropdown of common fields (FIELD_OPTIONS in the script); any other field name can still be typed in -->
+        <div class="combo" id="fieldCombo">
+          <input type="text" id="fieldName" autocomplete="off" placeholder="Choose or type a field"
+                 role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="fieldOptions">
+          <button type="button" class="combo-toggle" tabindex="-1" aria-label="Show field list">▾</button>
+          <ul class="combo-list" id="fieldOptions" role="listbox" hidden></ul>
+        </div>
       </div>
     </div>
   </div>
@@ -547,6 +572,7 @@ const CHANGELOG = [
       'Short Stop now appears between 2nd Base and 3rd Base.',
       'Player list columns resized so headings line up over their fields.',
       'Position shorthand help moved into an info (i) tip next to the Position Prefs heading.',
+      'Field now has a dropdown of Sandy Plains and Shaw Park fields, and you can still type in any other field.',
       'Added this What\'s New list and the last-updated date.'
     ]
   }
@@ -1539,6 +1565,86 @@ function renderChangelog() {
 }
 
 renderChangelog();
+
+// ── Field dropdown ───────────────────────────────────────────────────────────
+// Built into the page (not a <datalist>) so it looks the same in every browser
+// and long field names aren't cut off. Typed values not in the list are fine.
+
+const FIELD_OPTIONS = [
+  'Sandy Plains Field 1', 'Sandy Plains Field 2', 'Sandy Plains Field 3', 'Sandy Plains Field 4',
+  'Shaw Park Field 2', 'Shaw Park Field 3', 'Shaw Park Field 4'
+];
+
+function setupFieldCombo() {
+  const combo  = document.getElementById('fieldCombo');
+  const input  = document.getElementById('fieldName');
+  const list   = document.getElementById('fieldOptions');
+  const toggle = combo.querySelector('.combo-toggle');
+  let shown = [];
+  let active = -1;
+
+  function render(filter) {
+    const q = filter.trim().toLowerCase();
+    shown = FIELD_OPTIONS.filter(f => !q || f.toLowerCase().includes(q));
+    active = -1;
+    list.innerHTML = shown.map((f, i) => `<li role="option" id="fieldOpt${i}">${escHtml(f)}</li>`).join('');
+    list.hidden = !shown.length;
+    input.setAttribute('aria-expanded', String(!list.hidden));
+  }
+  function close() {
+    list.hidden = true; active = -1;
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
+  }
+  function choose(i) {
+    input.value = shown[i];
+    updateGameInfoDisplay();
+    close();
+  }
+  function highlight(i) {
+    const items = list.querySelectorAll('li');
+    items.forEach(li => li.classList.remove('active'));
+    active = i;
+    if (items[i]) {
+      items[i].classList.add('active');
+      items[i].scrollIntoView({ block: 'nearest' });
+      input.setAttribute('aria-activedescendant', items[i].id);
+    }
+  }
+
+  // Clicking or focusing shows the full list; typing narrows it
+  input.addEventListener('focus', () => render(''));
+  input.addEventListener('click', () => { if (list.hidden) render(''); });
+  input.addEventListener('input', () => { render(input.value); updateGameInfoDisplay(); });
+  toggle.addEventListener('click', () => {
+    if (list.hidden) { render(''); input.focus(); } else close();
+  });
+  // mousedown (not click) so the input doesn't lose focus before the pick lands
+  list.addEventListener('mousedown', e => {
+    const li = e.target.closest('li');
+    if (!li) return;
+    e.preventDefault();
+    choose([...list.children].indexOf(li));
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (list.hidden) render('');
+      highlight(Math.min(active + 1, shown.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      highlight(Math.max(active - 1, 0));
+    } else if (e.key === 'Enter' && !list.hidden && active >= 0) {
+      e.preventDefault();
+      choose(active);
+    } else if (e.key === 'Escape' || e.key === 'Tab') {
+      close();
+    }
+  });
+  document.addEventListener('mousedown', e => { if (!combo.contains(e.target)) close(); });
+}
+
+setupFieldCombo();
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
