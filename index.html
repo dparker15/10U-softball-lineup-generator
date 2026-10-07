@@ -89,11 +89,47 @@
     input:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(82,183,136,0.18); }
 
     .players-list { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }
-    .player-row { display: flex; align-items: center; gap: 0.5rem; }
-    .player-num { font-size: 0.8rem; font-weight: 700; color: var(--text-light); width: 22px; text-align: right; flex-shrink: 0; }
-    .player-row .name-inp { flex: 1; min-width: 0; }
-    .player-row .num-inp { width: 68px; flex-shrink: 0; }
-    .player-row .prefs-inp { width: 150px; flex-shrink: 0; }
+    /* Heading row and player rows share one grid so headings sit over their fields */
+    .player-row, .player-head {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 70fr) minmax(56px, 10fr) minmax(0, 20fr) 32px;  /* ≈ 70% / 10% / 20% */
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .player-head { margin-bottom: 0.4rem; }
+    .player-head > span {
+      font-size: 0.75rem; font-weight: 600; color: var(--text-light);
+      text-transform: uppercase; letter-spacing: .4px; text-align: center;
+    }
+    .player-head > span.head-name { text-align: left; }
+    .player-head > span.head-prefs { display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .player-num { font-size: 0.8rem; font-weight: 700; color: var(--text-light); text-align: right; }
+    .player-row .num-inp { text-align: center; }
+    .player-row .btn-ghost { justify-self: center; }
+
+    /* ⓘ tooltip on the Position Prefs heading — hover on desktop, tap on mobile */
+    .info-tip { position: relative; display: inline-flex; }
+    .info-tip > button {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 14px; height: 14px; padding: 0;
+      background: none; border: 1.5px solid var(--primary); border-radius: 50%;
+      color: var(--primary); cursor: pointer;
+      font-family: inherit; font-size: 9px; font-weight: 700; font-style: normal;
+      line-height: 1; text-transform: none;
+    }
+    .info-tip .tip {
+      display: none;
+      position: absolute; top: calc(100% + 6px); right: -8px; z-index: 20;
+      width: min(280px, 80vw);
+      padding: 0.65rem 0.8rem;
+      background: var(--text); color: #fff; border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+      font-size: 0.78rem; font-weight: 400; line-height: 1.5;
+      text-transform: none; letter-spacing: 0; text-align: left;
+    }
+    .info-tip:hover .tip, .info-tip:focus-within .tip { display: block; }
+    .info-tip .tip ul { list-style: none; margin: 0.3rem 0 0.4rem; }
+    .info-tip .tip code { font-weight: 600; color: var(--secondary); }
 
     .btn {
       display: inline-flex;
@@ -281,6 +317,41 @@
     }
 
     .print-header { display: none; }
+
+    /* ── Footer: last-updated date + What's New ── */
+    .site-footer {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 0.5rem 1rem 2rem;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-light);
+    }
+    .site-footer summary {
+      display: inline-block;
+      cursor: pointer;
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      list-style: none;
+    }
+    .site-footer summary::-webkit-details-marker { display: none; }
+    .site-footer summary:hover { color: var(--primary); background: var(--card); }
+    .site-footer .whats-new-link { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+    .site-footer details[open] .whats-new-link { text-decoration: none; }
+    .changelog {
+      max-width: 560px;
+      margin: 0.5rem auto 0;
+      padding: 1rem 1.25rem;
+      text-align: left;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .changelog h4 { font-size: 0.8rem; font-weight: 600; color: var(--text); margin: 0.75rem 0 0.3rem; }
+    .changelog h4:first-child { margin-top: 0; }
+    .changelog ul { padding-left: 1.1rem; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -325,17 +396,30 @@
         <span style="font-size:0.75rem;font-weight:400;color:var(--text-light);margin-left:4px">(7–12)</span>
       </h2>
 
-      <div style="display:grid;grid-template-columns:1fr 68px 150px 32px;gap:0.5rem;margin-bottom:0.4rem;padding:0 0 0 28px">
-        <span style="font-size:0.75rem;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px">Name</span>
-        <span style="font-size:0.75rem;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px">Jersey #</span>
-        <span style="font-size:0.75rem;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px">Position Prefs</span>
+      <div class="player-head">
+        <span></span>
+        <span class="head-name">Name</span>
+        <span>Jersey #</span>
+        <span class="head-prefs">Position Prefs
+          <span class="info-tip">
+            <button type="button" aria-label="Position shorthand help">i</button>
+            <span class="tip" role="tooltip">
+              Enter preferences ranked highest first, e.g. <code>C, 1B, OF</code>.
+              <ul>
+                <li><code>C</code> Catcher</li>
+                <li><code>P</code> Pitcher</li>
+                <li><code>1B</code> 1st Base</li>
+                <li><code>2B</code> 2nd Base</li>
+                <li><code>SS</code> Short Stop</li>
+                <li><code>3B</code> 3rd Base</li>
+                <li><code>OF</code> Any outfield spot</li>
+              </ul>
+            </span>
+          </span>
+        </span>
         <span></span>
       </div>
       <div class="players-list" id="playersList"></div>
-      <p class="paste-format-hint">
-        Position shorthand: <code>C</code>=Catcher &nbsp;<code>P</code>=Pitcher &nbsp;<code>1B</code>=1st Base &nbsp;<code>2B</code>=2nd Base &nbsp;<code>3B</code>=3rd Base &nbsp;<code>SS</code>=Short Stop &nbsp;<code>OF</code>=any outfield spot.<br>
-        Enter preferences ranked highest first, e.g. <code>C, 1B, OF</code>.
-      </p>
       <div class="btn-row" style="margin-top:0.75rem">
         <button class="btn btn-outline" style="font-size:0.82rem;padding:0.35rem 0.85rem" onclick="addPlayerRow()">+ Add Player</button>
         <button class="btn btn-outline" style="font-size:0.82rem;padding:0.35rem 0.85rem" onclick="saveRoster()">💾 Save Roster</button>
@@ -436,12 +520,38 @@
 
 </main>
 
+<!-- Footer: date and notes come from CHANGELOG in the script below -->
+<footer class="site-footer no-print">
+  <details>
+    <summary>Last updated <span id="lastUpdated"></span> · <span class="whats-new-link">What's new</span></summary>
+    <div class="changelog" id="changelog"></div>
+  </details>
+</footer>
+
 <!-- jsPDF + AutoTable for PDF export. To revert to browser print, remove these two lines and see doPrint() note in JS. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <script>
 // ── Constants ──────────────────────────────────────────────────────────────
+
+// What's New / Last Updated. Newest entry first, one entry per day. When a
+// set of changes is finalized, add a new entry at the top, or add to today's
+// entry if one already exists. The footer's "Last updated" date
+// comes from the first entry. Write the notes for coaches, not developers.
+const CHANGELOG = [
+  {
+    date: '2026-10-07',
+    changes: [
+      'Printout now fits two copies on one sheet, with batting lineup and fielding side by side and more room for names.',
+      'Short Stop now appears between 2nd Base and 3rd Base.',
+      'Player list columns resized so headings line up over their fields.',
+      'Position shorthand help moved into an info (i) tip next to the Position Prefs heading.',
+      'Added this What\'s New list and the last-updated date.'
+    ]
+  }
+];
+
 
 // The lineup/fielding structure covers the first 3 innings — most games at
 // this level don't reliably go further, and the coach can adjust fielding
@@ -453,12 +563,12 @@ const NUM_INNINGS = 3;
 // — for 7-10 players the number of named positions always equals the player
 // count, so every position is filled each inning and no one sits out.
 const POSITIONS_BY_COUNT = {
-  12: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Left Center Field','Right Center Field','Right Field','Bench 1','Bench 2'],
-  11: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Left Center Field','Right Center Field','Right Field','Bench'],
-  10: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Left Center Field','Right Center Field','Right Field'],
-   9: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Center Field','Right Field'],
-   8: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Left Field','Right Field'],
-   7: ['Catcher','Pitcher','1st Base','2nd Base','3rd Base','Short Stop','Outfield']
+  12: ['Catcher','Pitcher','1st Base','2nd Base','Short Stop','3rd Base','Left Field','Left Center Field','Right Center Field','Right Field','Bench 1','Bench 2'],
+  11: ['Catcher','Pitcher','1st Base','2nd Base','Short Stop','3rd Base','Left Field','Left Center Field','Right Center Field','Right Field','Bench'],
+  10: ['Catcher','Pitcher','1st Base','2nd Base','Short Stop','3rd Base','Left Field','Left Center Field','Right Center Field','Right Field'],
+   9: ['Catcher','Pitcher','1st Base','2nd Base','Short Stop','3rd Base','Left Field','Center Field','Right Field'],
+   8: ['Catcher','Pitcher','1st Base','2nd Base','Short Stop','3rd Base','Left Field','Right Field'],
+   7: ['Catcher','Pitcher','1st Base','2nd Base','Short Stop','3rd Base','Outfield']
 };
 
 // Shorthand for position preferences (see Shorthand for Positions in SKILL.md).
@@ -1284,13 +1394,14 @@ function doPrintPDF() {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
 
   const PAGE_W  = 612;
+  const PAGE_H  = 792;
+  const HALF_H  = PAGE_H / 2;           // 2-up: each copy gets half the sheet
   const MARGIN  = 36;
   const USABLE  = PAGE_W - MARGIN * 2;   // 540pt
   const PRIMARY = [13, 92, 169];
   const MUTED   = [90, 113, 138];
   const TEXT    = [26, 37, 53];
 
-  // ── Header ──────────────────────────────────────────────────────────────
   const team      = document.getElementById('teamName').value.trim()     || 'Home Team';
   const opp       = document.getElementById('opponentName').value.trim() || 'Away Team';
   const fieldName = document.getElementById('fieldName').value.trim();
@@ -1301,103 +1412,110 @@ function doPrintPDF() {
     dateStr = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   }
 
-  let y = MARGIN + 12;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.setTextColor(...PRIMARY);
-  doc.text(`${opp}  at  ${team}`, PAGE_W / 2, y, { align: 'center' });
-  y += 16;
-
-  if (dateStr) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(...MUTED);
-    doc.text(dateStr, PAGE_W / 2, y, { align: 'center' });
-    y += 13;
-  }
-
-  if (fieldName) {
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8.5);
-    doc.setTextColor(...MUTED);
-    doc.text(fieldName, PAGE_W / 2, y, { align: 'center' });
-    y += 13;
-  }
-
-  y += 4;
-  doc.setDrawColor(...PRIMARY);
-  doc.setLineWidth(0.75);
-  doc.line(MARGIN, y, PAGE_W - MARGIN, y);
-  y += 10;
-
-  const TABLE_Y = y;
-
-  const cellStyle = { fontSize: 8, cellPadding: { top: 3, bottom: 3, left: 4, right: 4 }, overflow: 'ellipsize', textColor: TEXT };
+  const cellStyle = { fontSize: 8, cellPadding: { top: 2.5, bottom: 2.5, left: 4, right: 4 }, overflow: 'ellipsize', textColor: TEXT };
   const headStyle = { fillColor: PRIMARY, textColor: 255, fontStyle: 'bold', fontSize: 7.5, halign: 'center' };
   const altStyle  = { fillColor: [250, 250, 250] };
 
-  // ── Fielding Grid (full width) ───────────────────────────────────────────
-  const POS_COL_W  = 85;
-  const INN_COL_W  = Math.floor((USABLE - POS_COL_W) / NUM_INNINGS);
+  // Side-by-side layout: batting lineup on the left, fielding grid on the right
+  const GAP        = 14;
+  const BAT_W      = 150;
+  const FIELD_X    = MARGIN + BAT_W + GAP;
+  const FIELD_W    = USABLE - BAT_W - GAP;
+  const POS_COL_W  = 78;
+  const INN_COL_W  = Math.floor((FIELD_W - POS_COL_W) / NUM_INNINGS);
 
-  const fieldBody = positions.map((pos, posIdx) => {
-    const label = pos;
-    const row = [label];
-    for (let inn = 0; inn < NUM_INNINGS; inn++) row.push(players[fieldingGrid[inn][posIdx]].name);
-    return row;
-  });
-
-  const inningColumnStyles = {};
-  for (let i = 1; i <= NUM_INNINGS; i++) inningColumnStyles[i] = { cellWidth: INN_COL_W, halign: 'center' };
-
-  doc.autoTable({
-    head: [['Position', ...Array.from({length: NUM_INNINGS}, (_, i) => `Inning ${i + 1}`)]],
-    body: fieldBody,
-    startY: TABLE_Y,
-    margin: { left: MARGIN },
-    tableWidth: USABLE,
-    styles: cellStyle,
-    headStyles: headStyle,
-    alternateRowStyles: altStyle,
-    columnStyles: {
-      0: { cellWidth: POS_COL_W, fontStyle: 'bold', textColor: PRIMARY },
-      ...inningColumnStyles
-    }
-  });
-  const fieldFinalY = doc.lastAutoTable.finalY;
-
-  // ── Batting Lineup (centered, below fielding) ────────────────────────────
-  const BAT_W   = 260;
-  const BAT_X   = Math.round((PAGE_W - BAT_W) / 2);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(...PRIMARY);
-  doc.text('Batting Lineup', PAGE_W / 2, fieldFinalY + 18, { align: 'center' });
-
-  const BAT_Y   = fieldFinalY + 24;
   const batBody = battingOrder.map((pIdx, i) => [
     String(i + 1),
     players[pIdx].name,
     players[pIdx].number || '—'
   ]);
-
-  doc.autoTable({
-    head: [['#', 'Player', 'Jersey']],
-    body: batBody,
-    startY: BAT_Y,
-    margin: { left: BAT_X },
-    tableWidth: BAT_W,
-    styles: cellStyle,
-    headStyles: headStyle,
-    alternateRowStyles: altStyle,
-    columnStyles: {
-      0: { cellWidth: 25, halign: 'center', fontStyle: 'bold', textColor: MUTED },
-      1: { cellWidth: 190 },
-      2: { cellWidth: 45, halign: 'center', textColor: MUTED }
-    }
+  const fieldBody = positions.map((pos, posIdx) => {
+    const row = [pos];
+    for (let inn = 0; inn < NUM_INNINGS; inn++) row.push(players[fieldingGrid[inn][posIdx]].name);
+    return row;
   });
-  const batFinalY = doc.lastAutoTable.finalY;
+  const inningColumnStyles = {};
+  for (let i = 1; i <= NUM_INNINGS; i++) inningColumnStyles[i] = { cellWidth: INN_COL_W, halign: 'center' };
+
+  // Draws one complete copy (header + both tables) starting at topY
+  function drawCopy(topY) {
+    let y = topY + MARGIN * 0.75 + 10;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(...PRIMARY);
+    doc.text(`${opp}  at  ${team}`, PAGE_W / 2, y, { align: 'center' });
+    y += 14;
+
+    if (dateStr) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...MUTED);
+      doc.text(dateStr, PAGE_W / 2, y, { align: 'center' });
+      y += 12;
+    }
+
+    if (fieldName) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...MUTED);
+      doc.text(fieldName, PAGE_W / 2, y, { align: 'center' });
+      y += 12;
+    }
+
+    y += 2;
+    doc.setDrawColor(...PRIMARY);
+    doc.setLineWidth(0.75);
+    doc.line(MARGIN, y, PAGE_W - MARGIN, y);
+    y += 14;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...PRIMARY);
+    doc.text('Batting Lineup', MARGIN + BAT_W / 2, y, { align: 'center' });
+    doc.text('Fielding', FIELD_X + FIELD_W / 2, y, { align: 'center' });
+    const TABLE_Y = y + 5;
+
+    doc.autoTable({
+      head: [['#', 'Player', 'Jersey']],
+      body: batBody,
+      startY: TABLE_Y,
+      margin: { left: MARGIN },
+      tableWidth: BAT_W,
+      styles: cellStyle,
+      headStyles: headStyle,
+      alternateRowStyles: altStyle,
+      columnStyles: {
+        0: { cellWidth: 20, halign: 'center', fontStyle: 'bold', textColor: MUTED },
+        1: { cellWidth: BAT_W - 20 - 36 },
+        2: { cellWidth: 36, halign: 'center', textColor: MUTED }
+      }
+    });
+
+    doc.autoTable({
+      head: [['Position', ...Array.from({length: NUM_INNINGS}, (_, i) => `Inning ${i + 1}`)]],
+      body: fieldBody,
+      startY: TABLE_Y,
+      margin: { left: FIELD_X },
+      tableWidth: FIELD_W,
+      styles: cellStyle,
+      headStyles: headStyle,
+      alternateRowStyles: altStyle,
+      columnStyles: {
+        0: { cellWidth: POS_COL_W, fontStyle: 'bold', textColor: PRIMARY },
+        ...inningColumnStyles
+      }
+    });
+  }
+
+  drawCopy(0);
+  drawCopy(HALF_H);
+
+  // Dashed cut line between the two copies
+  doc.setDrawColor(170, 170, 170);
+  doc.setLineWidth(0.5);
+  doc.setLineDashPattern([4, 3], 0);
+  doc.line(18, HALF_H, PAGE_W - 18, HALF_H);
+  doc.setLineDashPattern([], 0);
 
   // ── Open in new tab ───────────────────────────────────────────────────────
   // To revert to direct download instead, replace the two lines below with:
@@ -1406,6 +1524,21 @@ function doPrintPDF() {
   const blob = doc.output('blob');
   window.open(URL.createObjectURL(blob), '_blank');
 }
+
+// ── Footer: Last Updated + What's New ────────────────────────────────────────
+
+function formatChangelogDate(iso) {
+  return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function renderChangelog() {
+  document.getElementById('lastUpdated').textContent = formatChangelogDate(CHANGELOG[0].date);
+  document.getElementById('changelog').innerHTML = CHANGELOG.map(entry =>
+    `<h4>${formatChangelogDate(entry.date)}</h4><ul>${entry.changes.map(c => `<li>${escHtml(c)}</li>`).join('')}</ul>`
+  ).join('');
+}
+
+renderChangelog();
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
