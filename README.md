@@ -8,7 +8,7 @@ A single-file web app for youth softball coaches to instantly generate a batting
 - **Save/load your roster** to the browser's local storage so you don't have to re-enter it every game
 - **Auto-generates** a randomized batting order and fielding grid that satisfies all rotation rules and honors position preferences where possible
 - **Persistent Game Info** — date, team names, and field stay visible and editable on both the input and results screens, so a typo doesn't force a regenerate
-- **Click-to-swap** any two players in either the batting lineup or the fielding grid
+- **Click-to-swap** any two players in the batting lineup, or any two players in the same inning of the fielding grid
 - **Rule validation** with inline error messages — printing is blocked until all violations are resolved
 - **PDF export** opens in a new browser tab for printing or saving, with no browser headers or footers — prints two identical copies (2-up) on one letter sheet, each with the batting lineup and fielding grid side by side
 - **Last updated date and What's New** in the page footer, showing when the site last changed and what's different
@@ -20,7 +20,7 @@ A single-file web app for youth softball coaches to instantly generate a batting
 ## How to Use
 
 ### 1. Enter Game Info
-Fill in the game date, home team name, away team name, and the field. Pick the field from the dropdown (Sandy Plains Fields 1–4, Shaw Park Fields 2–4) or type in any other field name. This card stays visible after you generate a lineup, so you can fix any of these fields at any time without needing to regenerate.
+Fill in the game date (it defaults to today), home team name, away team name, and the field. Pick the field from the dropdown (Sandy Plains Fields 1–4, Shaw Park Fields 2–4) or type in any other field name. This card stays visible after you generate a lineup, so you can fix any of these fields at any time without needing to regenerate.
 
 ### 2. Add Your Roster
 Enter each player's name, jersey number, and (optionally) their ranked position preferences using shorthand, highest preference first. Tap or hover the **(i)** next to the Position Prefs heading for a shorthand reminder:
@@ -49,7 +49,7 @@ Click **Generate Lineup** to randomly produce:
 - A **fielding rotation** across 3 innings that enforces all rules below, giving priority to each player's ranked position preferences
 
 ### 4. Adjust if Needed
-Click any two rows in the batting lineup to swap them. Click any two cells in the fielding grid to swap those players. Rule violations are flagged in real time.
+Click any two rows in the batting lineup to swap them. Click two cells in the same inning of the fielding grid to swap those players (players can't be swapped between innings). Rule violations are flagged in real time.
 
 ### 5. Print or Save
 Click **Print / Save PDF** to open a clean PDF in a new browser tab. From there, use the browser's native PDF viewer to print or download.

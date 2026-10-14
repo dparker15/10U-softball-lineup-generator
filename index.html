@@ -510,7 +510,7 @@
         <div class="card">
           <h2>Fielding Rotation</h2>
           <div class="no-print">
-            <p class="hint" id="fieldingHint">Click any two cells to swap players.</p>
+            <p class="hint" id="fieldingHint">Click two cells in the same inning to swap players.</p>
           </div>
           <div class="fielding-scroll">
             <table id="fieldingTable">
@@ -565,6 +565,13 @@
 // entry if one already exists. The footer's "Last updated" date
 // comes from the first entry. Write the notes for coaches, not developers.
 const CHANGELOG = [
+  {
+    date: '2026-10-14',
+    changes: [
+      'Fielding swaps are now limited to players in the same inning. Clicking a cell in a different inning moves the selection there instead of swapping.',
+      'Game Date now defaults to today\'s date (you can still change it), including after Reset.'
+    ]
+  },
   {
     date: '2026-10-07',
     changes: [
@@ -630,9 +637,18 @@ let selectedCell = null; // {type:'batting', row} | {type:'fielding', inning, po
 window.addEventListener('load', () => {
   for (let i = 0; i < 11; i++) addPlayerRow(); // 11 is the common roster size; coaches can add up to 12
   updateCountBadge();
+  setDefaultGameDate();
   updateGameInfoDisplay();
   document.getElementById('loadRosterBtn').style.display = localStorage.getItem(ROSTER_STORAGE_KEY) ? 'inline-flex' : 'none';
 });
+
+function setDefaultGameDate() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  document.getElementById('gameDate').value = `${yyyy}-${mm}-${dd}`;
+}
 
 // ── Player Row Management ──────────────────────────────────────────────────
 
@@ -970,7 +986,7 @@ function goBack() {
 function resetPage() {
   if (!confirm('Reset and start over?')) return;
   players = []; battingOrder = []; fieldingGrid = []; positions = []; selectedCell = null;
-  document.getElementById('gameDate').value = '';
+  setDefaultGameDate();
   document.getElementById('teamName').value = '';
   document.getElementById('opponentName').value = '';
   document.getElementById('fieldName').value = '';
@@ -1045,8 +1061,8 @@ function renderFieldingGrid() {
   const hintEl = document.getElementById('fieldingHint');
   if (hintEl) {
     hintEl.textContent = hasBenchRows
-      ? 'Click any two cells to swap players. The Bench row(s) show who sits out each inning.'
-      : 'Click any two cells to swap players. Every player fields a position each inning — no bench with 10 or fewer players.';
+      ? 'Click two cells in the same inning to swap players. The Bench row(s) show who sits out each inning.'
+      : 'Click two cells in the same inning to swap players. Every player fields a position each inning — no bench with 10 or fewer players.';
   }
 
   body.innerHTML = '';
@@ -1121,8 +1137,13 @@ function handleFieldingClick(inn, pos) {
   if (!selectedCell) {
     selectedCell = { type: 'fielding', inn, pos };
     setFieldingHighlight(inn, pos, true);
+  } else if (selectedCell.type === 'fielding' && selectedCell.inn !== inn) {
+    // Swaps are only allowed within the same inning — move the selection instead
+    clearHighlights();
+    selectedCell = { type: 'fielding', inn, pos };
+    setFieldingHighlight(inn, pos, true);
   } else if (selectedCell.type === 'fielding') {
-    if (selectedCell.inn === inn && selectedCell.pos === pos) {
+    if (selectedCell.pos === pos) {
       setFieldingHighlight(inn, pos, false);
       selectedCell = null;
     } else {
