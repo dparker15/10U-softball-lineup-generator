@@ -12,7 +12,7 @@ A single-file web app for youth softball coaches to instantly generate a batting
 - **Rule validation** with inline error messages — printing is blocked until all violations are resolved
 - **PDF export** opens in a new browser tab for printing or saving, with no browser headers or footers — prints two identical copies (2-up) on one letter sheet, each with the batting lineup and fielding grid side by side
 - **Last updated date and What's New** in the page footer, showing when the site last changed and what's different
-- **Responsive design** — works on desktop, tablet, and mobile
+- **Responsive design** — works on desktop, tablet, and mobile; on phones, only the fielding grid scrolls sideways, with its Position column pinned and an edge shadow showing when more innings are off-screen
 - No installation, no backend, no dependencies to install — just open the HTML file
 
 ---

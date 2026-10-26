@@ -45,6 +45,10 @@
     header .icon { width: 30px; height: 30px; display: block; flex-shrink: 0; }
     header h1 { font-family: 'Oswald', sans-serif; font-size: 1.4rem; letter-spacing: 0.3px; }
     header .sub { font-size: 0.8rem; opacity: 0.65; margin-left: 0.5rem; }
+    @media (max-width: 600px) {
+      header { padding: 0.75rem 1rem; }
+      header h1 { font-size: 1.05rem; }
+    }
 
     main { max-width: 1300px; margin: 0 auto; padding: 1.5rem 1rem; }
 
@@ -121,10 +125,24 @@
       text-transform: uppercase; letter-spacing: .4px; text-align: center;
     }
     .player-head > span.head-name { text-align: left; }
-    .player-head > span.head-prefs { display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .player-head > span.head-prefs { display: block; }
+    .head-prefs .nowrap { white-space: nowrap; }
+    .head-prefs .info-tip { vertical-align: -2px; margin-left: 3px; }
     .player-num { font-size: 0.8rem; font-weight: 700; color: var(--text-light); text-align: right; }
     .player-row .num-inp { text-align: center; }
     .player-row .btn-ghost { justify-self: center; }
+
+    /* Phones: tighten page/card padding and the player-row grid so Position Prefs has room */
+    @media (max-width: 600px) {
+      main { padding: 1rem 0.75rem; }
+      .card { padding: 1rem 0.75rem; }
+      .player-row, .player-head {
+        grid-template-columns: 16px minmax(0, 1.4fr) 44px minmax(0, 1fr) 22px;
+        gap: 0.35rem;
+      }
+      .player-row input[type="text"] { padding-left: 0.5rem; padding-right: 0.5rem; }
+      .player-row .btn-ghost { padding: 0.25rem 0.15rem; }
+    }
 
     /* ⓘ tooltip on the Position Prefs heading — hover on desktop, tap on mobile */
     .info-tip { position: relative; display: inline-flex; }
@@ -144,7 +162,7 @@
       background: var(--text); color: #fff; border-radius: 8px;
       box-shadow: 0 4px 14px rgba(0,0,0,0.2);
       font-size: 0.78rem; font-weight: 400; line-height: 1.5;
-      text-transform: none; letter-spacing: 0; text-align: left;
+      text-transform: none; letter-spacing: 0; text-align: left; white-space: normal;
     }
     .info-tip:hover .tip, .info-tip:focus-within .tip { display: block; }
     .info-tip .tip ul { list-style: none; margin: 0.3rem 0 0.4rem; }
@@ -181,8 +199,9 @@
 
     /* Results layout */
     #results { display: none; }
-    .results-layout { display: grid; grid-template-columns: 260px 1fr; gap: 1.25rem; align-items: start; }
-    @media (max-width: 800px) { .results-layout { grid-template-columns: 1fr; } }
+    .results-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+    .results-layout > * { min-width: 0; }  /* keep wide tables from stretching the layout past the screen */
+    @media (max-width: 800px) { .results-layout { grid-template-columns: minmax(0, 1fr); } }
 
     /* Tables */
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
@@ -210,6 +229,25 @@
 
     /* Fielding scroll */
     .fielding-scroll { overflow-x: auto; }
+    .fielding-scroll:focus-visible { outline: 2px solid var(--secondary); outline-offset: 2px; border-radius: 4px; }
+
+    /* Fielding table on narrow screens: Position column stays pinned while innings scroll,
+       and soft edge shadows show when more columns are hidden left or right */
+    .fielding-frame { position: relative; }
+    .fielding-frame::before, .fielding-frame::after {
+      content: ''; position: absolute; top: 0; bottom: 0; width: 18px; z-index: 3;
+      pointer-events: none; opacity: 0; transition: opacity 0.2s;
+    }
+    .fielding-frame::before { left: var(--pin-w, 0px); background: linear-gradient(to right, rgba(26,37,53,0.18), transparent); }
+    .fielding-frame::after { right: 0; background: linear-gradient(to left, rgba(26,37,53,0.18), transparent); }
+    .fielding-frame.more-left::before, .fielding-frame.more-right::after { opacity: 1; }
+    #fieldingTable th:first-child, #fieldingTable td.pos-label { position: sticky; left: 0; z-index: 1; }
+    #fieldingTable td.pos-label { background: var(--card); }
+    #fieldingTable tr:nth-child(even) td.pos-label { background: #fafafa; }
+    #fieldingTable th:first-child { z-index: 2; }
+    @media print { .fielding-frame::before, .fielding-frame::after { display: none; } }
+    /* Long names wrap in the batting lineup instead of widening its card */
+    #battingTable td:nth-child(2) { white-space: normal; overflow-wrap: anywhere; }
 
     /* Bench row styling */
     td.bench-label { font-style: italic; color: var(--text-light); }
@@ -425,8 +463,7 @@
         <span></span>
         <span class="head-name">Name</span>
         <span>Jersey #</span>
-        <span class="head-prefs">Position Prefs
-          <span class="info-tip">
+        <span class="head-prefs">Position <span class="nowrap">Prefs<span class="info-tip">
             <button type="button" aria-label="Position shorthand help">i</button>
             <span class="tip" role="tooltip">
               Enter preferences ranked highest first, e.g. <code>C, 1B, OF</code>.
@@ -440,7 +477,7 @@
                 <li><code>OF</code> Any outfield spot</li>
               </ul>
             </span>
-          </span>
+          </span></span>
         </span>
         <span></span>
       </div>
@@ -512,11 +549,13 @@
           <div class="no-print">
             <p class="hint" id="fieldingHint">Click two cells in the same inning to swap players.</p>
           </div>
-          <div class="fielding-scroll">
-            <table id="fieldingTable">
-              <thead id="fieldingHead"></thead>
-              <tbody id="fieldingBody"></tbody>
-            </table>
+          <div class="fielding-frame">
+            <div class="fielding-scroll" role="region" aria-label="Fielding rotation table" tabindex="0">
+              <table id="fieldingTable">
+                <thead id="fieldingHead"></thead>
+                <tbody id="fieldingBody"></tbody>
+              </table>
+            </div>
           </div>
           <div class="paste-panel no-print">
             <h3>Manual fielding grid</h3>
@@ -566,6 +605,14 @@
 // comes from the first entry. Write the notes for coaches, not developers.
 const CHANGELOG = [
   {
+    date: '2026-10-26',
+    changes: [
+      'On phones, the player list uses more of the screen width so the Position Prefs box is wide enough to read, and the (i) help icon sits right next to its heading.',
+      'When the Fielding Rotation table is too wide for the screen, only the table scrolls sideways (not the whole page). The Position column stays in place, and a soft shadow on the edge shows there are more innings that way.',
+      'Long player names in the Batting Lineup now wrap instead of stretching the card.'
+    ]
+  },
+  {
     date: '2026-10-14',
     changes: [
       'Fielding swaps are now limited to players in the same inning. Clicking a cell in a different inning moves the selection there instead of swapping.',
@@ -604,7 +651,7 @@ const POSITIONS_BY_COUNT = {
    7: ['Catcher','Pitcher','1st Base','2nd Base','Short Stop','3rd Base','Outfield']
 };
 
-// Shorthand for position preferences (see Shorthand for Positions in SKILL.md).
+// Shorthand for position preferences (see Shorthand for Positions in CLAUDE.md).
 const SHORTHAND_MAP = {
   'C': 'Catcher', 'P': 'Pitcher', '1B': '1st Base', '2B': '2nd Base',
   '3B': '3rd Base', 'SS': 'Short Stop', 'OF': 'OUTFIELD_GROUP'
@@ -772,7 +819,7 @@ function shuffle(arr) {
 //      each inning is a bijection between players and slots).
 //   2. Players are placed in their preferred positions where possible,
 //      honoring rank order (no bench preference — that's randomized).
-//   3. (same as 1, restated in SKILL.md as "use every available player")
+//   3. (same as 1, restated in CLAUDE.md as "use every available player")
 //   4. A player cannot sit any Bench slot more than once, in aggregate, per game.
 //   5. A player can pitch at most 2 of the 3 innings (not required to be consecutive).
 
@@ -901,7 +948,7 @@ function validateRules() {
   const benchIndices = [];
   positions.forEach((p, i) => { if (p.startsWith('Bench')) benchIndices.push(i); }); // empty when there's no bench (10 or fewer players)
 
-  // Rule 1 (SKILL.md Rule 3): every position must be filled every inning by a distinct player.
+  // Rule 1 (CLAUDE.md Rule 3): every position must be filled every inning by a distinct player.
   for (let i = 0; i < NUM_INNINGS; i++) {
     const seen = new Set();
     for (let j = 0; j < positions.length; j++) {
@@ -1083,7 +1130,32 @@ function renderFieldingGrid() {
     tr.innerHTML = html;
     body.appendChild(tr);
   });
+  updateFieldingScrollCues();
 }
+
+// Edge shadows on the fielding table: show which side has more innings to scroll to
+function updateFieldingScrollCues() {
+  const sc = document.querySelector('.fielding-scroll');
+  if (!sc) return;
+  const frame = sc.parentElement;
+  const max = sc.scrollWidth - sc.clientWidth;
+  const pin = sc.querySelector('#fieldingTable th:first-child');
+  frame.style.setProperty('--pin-w', (pin ? pin.offsetWidth : 0) + 'px');
+  frame.classList.toggle('more-left', sc.scrollLeft > 1);
+  frame.classList.toggle('more-right', sc.scrollLeft < max - 1);
+}
+(function initFieldingScrollCues() {
+  const sc = document.querySelector('.fielding-scroll');
+  if (!sc) return;
+  sc.addEventListener('scroll', updateFieldingScrollCues, { passive: true });
+  if ('ResizeObserver' in window) {
+    const ro = new ResizeObserver(updateFieldingScrollCues);
+    ro.observe(sc);
+    ro.observe(document.getElementById('fieldingTable'));
+  } else {
+    window.addEventListener('resize', updateFieldingScrollCues);
+  }
+})();
 
 function showErrors() {
   const errs = validateRules();
